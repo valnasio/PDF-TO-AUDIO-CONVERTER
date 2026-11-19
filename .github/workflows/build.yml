@@ -43,18 +43,33 @@ jobs:
           [[ "$VERSION" =~ ^[0-9] ]] || VERSION="0.0.0~dev${GITHUB_RUN_NUMBER}"
           VERSION="$VERSION" bash build.sh
 
-      - name: Teste do .deb (instala dependências e abre a janela)
+      - name: Teste do .deb (instala dependências, abre a janela e captura a tela)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ./dist/leitor-pdf_amd64.deb xvfb desktop-file-utils
-          export PDF_AUDIO_DATA=/tmp/lt
-          xvfb-run -a leitor-pdf --port 8777 &
+          sudo apt-get install -y -qq ./dist/leitor-pdf_amd64.deb xvfb desktop-file-utils imagemagick xdotool
+          export PDF_AUDIO_DATA=/tmp/lt DISPLAY=:99
+          Xvfb :99 -screen 0 1280x900x24 &
+          sleep 2
+          leitor-pdf --port 8777 &
           for i in $(seq 1 40); do curl -sf localhost:8777/api/voices >/dev/null && break; sleep 1; done
           curl -sf localhost:8777/api/voices >/dev/null
-          sleep 5
+          sleep 8
           # a janela GTK (linux_window.py) precisa estar aberta
           pgrep -af linux_window.py
+          import -window root dist/linux-janela.png
+          # clica no botão de tema (canto direito da barra) para testar o modo noturno
+          WIN=$(xdotool search --name "Leitor de PDF" | head -1)
+          xdotool mousemove --window "$WIN" 1192 32 click 1
+          sleep 2
+          import -window root dist/linux-janela-noturno.png
           desktop-file-validate /usr/share/applications/leitor-pdf.desktop
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-capturas
+          path: dist/linux-janela*.png
+          if-no-files-found: ignore
 
       - name: Teste do .rpm (instalação no Fedora resolve as dependências)
         run: |

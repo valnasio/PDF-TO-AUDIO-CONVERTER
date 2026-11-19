@@ -3,18 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Leitor de PDF em Áudio · Mini (web)</title>
-  <meta name="description" content="Ouça seus PDFs em voz alta direto no navegador. Grátis, sem instalar e sem enviar seus arquivos para lugar nenhum." />
+  <title>Leitor de PDF em Áudio no navegador</title>
+  <meta name="description" content="Ouça seus PDFs em voz alta direto no navegador. Gratuito, sem instalar e sem enviar seus arquivos para lugar nenhum." />
   <link rel="icon" href="../img/icon.png" />
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    // Tema antes de desenhar a tela (compartilhado com a página de download).
+    document.documentElement.dataset.theme = localStorage.getItem("theme")
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  </script>
 </head>
 <body>
   <header class="topbar">
-    <a href="#/" class="brand"><img src="../img/icon.png" alt="" class="brand-img" /> <span class="brand-text">Leitor de PDF</span> <span class="tag">mini</span></a>
+    <a href="#/" class="brand"><img src="../img/icon.png" alt="" class="brand-img" /> <span class="brand-text">Leitor de PDF</span> <span class="tag">no navegador</span></a>
     <nav>
       <a href="#/" data-nav="upload">Abrir PDF</a>
       <a href="#/biblioteca" data-nav="library">Biblioteca</a>
-      <a href="../" class="get-app" title="Versão completa para Windows e Linux">⬇ App completo</a>
+      <a href="../" class="get-app" title="Versão completa para Windows e Linux">Baixar o app</a>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Ativar modo noturno">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      </button>
     </nav>
   </header>
 
@@ -23,12 +32,12 @@
   <!-- ============ ENVIO ============ -->
   <template id="tpl-upload">
     <section class="screen upload">
-      <h1>Ouça qualquer PDF agora mesmo</h1>
-      <p class="muted">Direto no navegador, sem instalar nada. Seu arquivo <b>não sai do seu computador</b>.</p>
+      <h1>Ouça qualquer PDF agora mesmo.</h1>
+      <p class="muted">Direto no navegador, sem instalar nada. O arquivo não sai do seu aparelho.</p>
 
       <label class="dropzone" id="dropzone">
         <input type="file" id="file" accept="application/pdf,.pdf" hidden />
-        <div class="drop-icon">📄</div>
+        <div class="drop-icon"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 4h16l10 10v30H12z"/><path d="M28 4v10h10"/><path d="M19 24h12M19 31h12M19 38h7"/></svg></div>
         <div class="drop-title">Arraste o PDF aqui</div>
         <div class="muted">ou <span class="link">clique para escolher</span></div>
       </label>
@@ -43,7 +52,7 @@
 
       <div class="compare">
         <div>
-          <h3>🌐 Mini (esta página)</h3>
+          <h3>Esta página</h3>
           <ul>
             <li>Lê em voz alta na hora</li>
             <li>Usa as vozes do seu navegador</li>
@@ -51,13 +60,13 @@
           </ul>
         </div>
         <div>
-          <h3>💻 App completo</h3>
+          <h3>Aplicativo para Windows e Linux</h3>
           <ul>
-            <li>Gera o <b>MP3</b> do livro inteiro</li>
+            <li>Gera o MP3 de cada página e do livro inteiro</li>
             <li>Vozes neurais em qualquer computador</li>
-            <li>Windows e Linux</li>
+            <li>Confere cada trecho narrado</li>
           </ul>
-          <a href="../" class="btn ghost small">Baixar o app →</a>
+          <a href="../" class="btn ghost small">Baixar o aplicativo</a>
         </div>
       </div>
     </section>

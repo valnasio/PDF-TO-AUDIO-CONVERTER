@@ -1,0 +1,7 @@
+Fontes incluídas neste projeto, ambas sob a SIL Open Font License 1.1
+(https://openfontlicense.org), que permite uso e redistribuição livres:
+
+- Bricolage Grotesque — Copyright 2022 The Bricolage Grotesque Project Authors
+  https://github.com/ateliertriay/bricolage
+- Atkinson Hyperlegible — Copyright 2020 Braille Institute of America, Inc.
+  https://www.brailleinstitute.org/freefont

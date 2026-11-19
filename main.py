@@ -92,7 +92,7 @@ def open_window(url: str) -> bool:
 
     webview.settings["ALLOW_DOWNLOADS"] = True
     window = webview.create_window(
-        APP_NAME, url, width=1240, height=860, min_size=(820, 600), background_color="#0f1117",
+        APP_NAME, url, width=1240, height=860, min_size=(820, 600), background_color="#ffffff",
     )
 
     def on_closing():

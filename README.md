@@ -84,6 +84,13 @@ O projeto ficou parado nesse ponto. Com a chegada das ferramentas de IA, voltei 
   </tr>
 </table>
 
+<p align="center">
+  <img src="docs/img/arquivos.png" alt="Áudios por página" width="90%" /><br />
+  <sub><b>📁 Áudios por página:</b> cada página vira um MP3 com o nome do capítulo, numa pasta por livro. Ouça, baixe uma página ou a pasta inteira em .zip.</sub>
+</p>
+
+<p align="center"><sub>Todas as telas têm modo claro e noturno.</sub></p>
+
 ## 🚀 Como usar
 
 Escolha a versão que preferir:

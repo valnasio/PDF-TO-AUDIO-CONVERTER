@@ -4,15 +4,24 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leitor de PDF em Áudio</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
+  <link rel="icon" href="/icon.png" />
   <link rel="stylesheet" href="/styles.css" />
+  <script>
+    // Tema antes de desenhar a tela: escolha salva ou a preferência do sistema.
+    document.documentElement.dataset.theme = localStorage.getItem("theme")
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  </script>
 </head>
 <body>
   <header class="topbar">
-    <a href="#/" class="brand"><span class="brand-icon">🎧</span> Leitor de PDF</a>
+    <a href="#/" class="brand"><img src="/icon.png" alt="" width="28" height="28" /> Leitor de PDF</a>
     <nav>
       <a href="#/" data-nav="upload">Converter</a>
       <a href="#/biblioteca" data-nav="library">Biblioteca</a>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Ativar modo noturno">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      </button>
     </nav>
   </header>
 
@@ -26,7 +35,7 @@
 
       <label class="dropzone" id="dropzone">
         <input type="file" id="file" accept="application/pdf,.pdf" hidden />
-        <div class="drop-icon">📄</div>
+        <div class="drop-icon"><svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 4h16l10 10v30H12z"/><path d="M28 4v10h10"/><path d="M19 24h12M19 31h12M19 38h7"/></svg></div>
         <div class="drop-title">Arraste o PDF aqui</div>
         <div class="muted">ou <span class="link">clique para escolher</span></div>
         <div class="file-chosen" id="file-chosen" hidden></div>

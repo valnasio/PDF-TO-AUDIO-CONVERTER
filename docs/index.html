@@ -9,15 +9,22 @@
   <meta property="og:description" content="Ouça qualquer PDF como audiolivro, com voz natural em português." />
   <meta property="og:image" content="img/player.png" />
   <link rel="icon" href="img/icon.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet" />
+  <script>
+    // Tema antes de desenhar a página: escolha salva ou a preferência do sistema.
+    document.documentElement.dataset.theme = localStorage.getItem("theme")
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  </script>
   <style>
     /* ------------------------------------------------------------------
        Tokens
        Papel, Névoa, Tinta, Ultramar (ação), Verde-leitura (texto sendo lido), Linha.
        Cores chapadas: sem degradês, sem brilho, sem sombras decorativas.
     ------------------------------------------------------------------ */
+    @font-face { font-family: "Bricolage Grotesque"; src: url("fonts/bricolage-grotesque.woff2") format("woff2"); font-weight: 500 800; font-display: swap; }
+    @font-face { font-family: "Atkinson Hyperlegible"; src: url("fonts/atkinson-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+    @font-face { font-family: "Atkinson Hyperlegible"; src: url("fonts/atkinson-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+    @font-face { font-family: "Atkinson Hyperlegible"; src: url("fonts/atkinson-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
     :root {
       --paper: #ffffff;
       --mist: #eef0f5;
@@ -28,9 +35,31 @@
       --read: #0e7c6b;
       --read-tint: #d7efe9;
       --line: #d5d9e3;
+      --on-ultra: #ffffff;
+      --link: #3b2fd0;
+      --footer-bg: #161a33;
+      --footer-text: #c9cce0;
+      --footer-link: #ffffff;
       --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
       --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
       --grid: min(1160px, calc(100% - 48px));
+      color-scheme: light;
+    }
+    /* Modo noturno: tinta azul-profunda, mesmas regras (cores chapadas, sem brilho) */
+    [data-theme="dark"] {
+      --paper: #14172b;
+      --mist: #1c2038;
+      --ink: #e8e9f2;
+      --ink-soft: #a4a9c4;
+      --ultra: #6b5ff5;
+      --ultra-dark: #5a4ee6;
+      --read: #49c7ad;
+      --read-tint: #173a35;
+      --line: #2f3456;
+      --link: #a9a2ff;
+      --footer-bg: #0f1122;
+      --footer-text: #a4a9c4;
+      color-scheme: dark;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -51,13 +80,13 @@
     .note { font-size: .95rem; color: var(--ink-soft); }
 
     /* Botões */
-    .btn { display: inline-flex; align-items: center; gap: 12px; padding: 14px 22px; border-radius: 10px; font: 700 1.0625rem/1.2 var(--body); text-decoration: none; border: 2px solid var(--ultra); background: var(--ultra); color: #fff; transition: background-color .15s; }
+    .btn { display: inline-flex; align-items: center; gap: 12px; padding: 14px 22px; border-radius: 10px; font: 700 1.0625rem/1.2 var(--body); text-decoration: none; border: 2px solid var(--ultra); background: var(--ultra); color: var(--on-ultra); transition: background-color .15s; }
     .btn:hover { background: var(--ultra-dark); border-color: var(--ultra-dark); }
     .btn svg { width: 22px; height: 22px; flex: none; }
     .btn small { display: block; font-weight: 400; font-size: .82rem; opacity: .85; margin-top: 2px; }
     .btn-quiet { background: transparent; color: var(--ink); border-color: var(--ink); }
-    .btn-quiet:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
-    .link { color: var(--ultra); text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+    .btn-quiet:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .link { color: var(--link); text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
 
     /* Navegação */
     .nav { border-bottom: 1px solid var(--line); background: var(--paper); position: sticky; top: 0; z-index: 10; }
@@ -67,6 +96,12 @@
     .nav-links { display: flex; gap: 26px; font-size: .97rem; }
     .nav-links a { text-decoration: none; color: var(--ink-soft); }
     .nav-links a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 6px; }
+    .nav-right { display: flex; align-items: center; gap: 26px; }
+    .theme-toggle { width: 40px; height: 40px; display: grid; place-items: center; background: transparent; color: var(--ink); border: 1.5px solid var(--line); border-radius: 10px; cursor: pointer; }
+    .theme-toggle:hover { border-color: var(--ink); }
+    .theme-toggle svg { width: 19px; height: 19px; }
+    .theme-toggle .sun, [data-theme="dark"] .theme-toggle .moon { display: none; }
+    [data-theme="dark"] .theme-toggle .sun { display: block; }
 
     /* Seções */
     .section { padding: 104px 0; }
@@ -97,7 +132,7 @@
     .page-foot { display: flex; justify-content: space-between; margin-top: 22px; font-size: .85rem; color: var(--ink-soft); }
     .player { margin-top: 18px; padding-top: 18px; border-top: 1.5px solid var(--ink); display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center; }
     .player-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--ink); display: grid; place-items: center; }
-    .player-btn svg { width: 14px; height: 14px; fill: #fff; margin-left: 2px; }
+    .player-btn svg { width: 14px; height: 14px; fill: var(--paper); margin-left: 2px; }
     .wave { display: flex; align-items: center; gap: 3px; height: 34px; }
     .wave i { flex: 1; background: var(--line); border-radius: 2px; }
     .wave i.on { background: var(--read); }
@@ -109,7 +144,7 @@
     .version + .version { padding-left: 32px; border-left: 1px solid var(--line); }
     .version.current::before { content: ""; position: absolute; top: -1.5px; left: 0; right: 0; height: 6px; background: var(--ultra); }
     .version.current .badge { display: inline-block; }
-    .badge { display: none; font-size: .85rem; font-weight: 700; color: var(--ultra); }
+    .badge { display: none; font-size: .85rem; font-weight: 700; color: var(--link); }
     .version-req { color: var(--ink-soft); font-size: .97rem; }
     .version ul { margin: 6px 0 14px; padding-left: 20px; flex: 1; }
     .version li { margin-bottom: 6px; }
@@ -134,7 +169,7 @@
     /* ---------- Passos (sequência real: numerados) ---------- */
     .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; counter-reset: step; }
     .steps li { counter-increment: step; border-top: 1.5px solid var(--ink); padding-top: 22px; }
-    .steps li::before { content: counter(step); display: block; font: 800 3.6rem/1 var(--display); color: var(--ultra); margin-bottom: 18px; letter-spacing: -.04em; }
+    .steps li::before { content: counter(step); display: block; font: 800 3.6rem/1 var(--display); color: var(--link); margin-bottom: 18px; letter-spacing: -.04em; }
     .steps h3 { margin-bottom: 8px; }
     .steps p { color: var(--ink-soft); }
 
@@ -152,7 +187,7 @@
     .faq details { border-bottom: 1px solid var(--line); }
     .faq summary { list-style: none; cursor: pointer; padding: 22px 48px 22px 0; position: relative; font: 700 1.15rem/1.35 var(--display); }
     .faq summary::-webkit-details-marker { display: none; }
-    .faq summary::after { content: "+"; position: absolute; right: 4px; top: 16px; font: 500 1.8rem var(--display); color: var(--ultra); }
+    .faq summary::after { content: "+"; position: absolute; right: 4px; top: 16px; font: 500 1.8rem var(--display); color: var(--link); }
     .faq details[open] summary::after { content: "−"; }
     .faq details p { padding: 0 0 24px; color: var(--ink-soft); }
 
@@ -161,9 +196,9 @@
     .closing .wrap { display: flex; justify-content: space-between; align-items: center; gap: 32px; flex-wrap: wrap; }
     .closing-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 
-    footer { background: var(--ink); color: #c9cce0; padding: 36px 0; font-size: .95rem; }
+    footer { background: var(--footer-bg); color: var(--footer-text); padding: 36px 0; font-size: .95rem; }
     footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    footer a { color: #fff; }
+    footer a { color: var(--footer-link); }
 
     /* Um único momento de movimento: a leitura avança uma vez ao carregar. */
     @media (prefers-reduced-motion: no-preference) {
@@ -181,7 +216,8 @@
       .section-head { gap: 16px; }
     }
     @media (max-width: 640px) {
-      .nav-links a:not(:last-child) { display: none; }
+      .nav-links { display: none; }
+      .nav-right { gap: 16px; }
       .section { padding: 72px 0; }
       .hero { padding: 48px 0 72px; }
       .feature { grid-template-columns: 1fr; gap: 6px; }
@@ -196,6 +232,7 @@
   <nav class="nav" aria-label="Principal">
     <div class="wrap">
       <a href="#" class="brand"><img src="img/icon.png" alt="" /> Leitor de PDF em Áudio</a>
+      <div class="nav-right">
       <div class="nav-links">
         <a href="#versoes">Versões</a>
         <a href="#recursos">Recursos</a>
@@ -203,6 +240,11 @@
         <a href="#historia">História</a>
         <a href="#faq">Dúvidas</a>
         <a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER">GitHub</a>
+      </div>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Ativar modo noturno">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      </button>
       </div>
     </div>
   </nav>
@@ -323,12 +365,14 @@
         <button role="tab" aria-selected="false" data-shot="1">Conversão</button>
         <button role="tab" aria-selected="false" data-shot="2">Player</button>
         <button role="tab" aria-selected="false" data-shot="3">Biblioteca</button>
+        <button role="tab" aria-selected="false" data-shot="4">Áudios por página</button>
       </div>
       <div class="shots">
         <img class="active" src="img/envio.png" alt="Tela de envio do PDF" data-caption="Arraste o PDF, escolha a voz e ouça uma amostra antes de converter." />
         <img src="img/conversao.png" alt="Tela de conversão" data-caption="Acompanhe cada etapa da conversão, com o percentual e o tempo restante." />
         <img src="img/player.png" alt="Player com leitura acompanhada" data-caption="Ajuste a velocidade, vá direto a uma página e acompanhe o texto enquanto ouve." />
         <img src="img/biblioteca.png" alt="Biblioteca de arquivos" data-caption="Todos os seus livros num só lugar: ouça o áudio, abra os áudios por página ou leia o PDF." />
+        <img src="img/arquivos.png" alt="Pasta com um áudio por página" data-caption="Cada página vira um MP3 com o nome do capítulo. Ouça, baixe uma página ou a pasta inteira em .zip." />
         <p id="caption" aria-live="polite">Arraste o PDF, escolha a voz e ouça uma amostra antes de converter.</p>
       </div>
     </div>
@@ -414,6 +458,21 @@
   </footer>
 
   <script>
+    // Modo claro / noturno (a escolha vale também para a versão no navegador)
+    const themeBtn = document.getElementById("theme-toggle");
+    const syncTheme = () => {
+      const dark = document.documentElement.dataset.theme === "dark";
+      themeBtn.setAttribute("aria-label", dark ? "Ativar modo claro" : "Ativar modo noturno");
+      themeBtn.title = themeBtn.getAttribute("aria-label");
+    };
+    themeBtn.addEventListener("click", () => {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+      syncTheme();
+    });
+    syncTheme();
+
     // Galeria de telas (abas acessíveis)
     const tabs = document.querySelectorAll(".tabs button");
     const shots = document.querySelectorAll(".shots img");

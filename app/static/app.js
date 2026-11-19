@@ -27,11 +27,32 @@ const fmtDuration = (s) => {
 const fmtSize = (b) => b > 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.ceil(b / 1e3)} KB`;
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// Capas em cores chapadas de "encadernação", escolhidas pelo título.
+const COVER_COLORS = ["#3b2fd0", "#0e7c6b", "#8a3b12", "#5b2a86", "#1f5c99", "#7a2e3a", "#2f6b3a", "#9a5b00"];
 function coverStyle(title) {
   let h = 0;
-  for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) % 360;
-  return `background: linear-gradient(145deg, hsl(${h} 65% 45%), hsl(${(h + 60) % 360} 70% 28%));`;
+  for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) % 9973;
+  return `background: ${COVER_COLORS[h % COVER_COLORS.length]};`;
 }
+
+// Modo claro / noturno
+function setupThemeToggle() {
+  const btn = document.getElementById("theme-toggle");
+  if (!btn) return;
+  const sync = () => {
+    const dark = document.documentElement.dataset.theme === "dark";
+    btn.setAttribute("aria-label", dark ? "Ativar modo claro" : "Ativar modo noturno");
+    btn.title = btn.getAttribute("aria-label");
+  };
+  btn.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    sync();
+  });
+  sync();
+}
+setupThemeToggle();
 
 const STATUS_LABEL = {
   queued: "Na fila", extracting: "Lendo PDF", synthesizing: "Gerando áudio",
