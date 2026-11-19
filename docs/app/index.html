@@ -6,7 +6,7 @@
   <title>Leitor de PDF em Áudio no navegador</title>
   <meta name="description" content="Ouça seus PDFs em voz alta direto no navegador. Gratuito, sem instalar e sem enviar seus arquivos para lugar nenhum." />
   <link rel="icon" href="../img/icon.png" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=2.6.0" />
   <script>
     // Tema antes de desenhar a tela (compartilhado com a página de download).
     document.documentElement.dataset.theme = localStorage.getItem("theme")
@@ -55,7 +55,7 @@
           <h3>Esta página</h3>
           <ul>
             <li>Lê em voz alta na hora</li>
-            <li>Usa as vozes do seu navegador</li>
+            <li>Vozes naturais grátis (Faber, Cadu e Jeff) em qualquer navegador</li>
             <li>Funciona até no celular</li>
           </ul>
         </div>
@@ -114,6 +114,7 @@
             </label>
             <a class="btn ghost" id="pl-read">📖 Ler PDF</a>
           </div>
+          <p class="status" id="pl-status" hidden></p>
           <p class="hint" id="pl-voice-hint" hidden></p>
         </div>
       </div>
@@ -158,6 +159,6 @@
     </section>
   </template>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=2.6.0"></script>
 </body>
 </html>

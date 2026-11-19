@@ -101,7 +101,7 @@ Escolha a versão que preferir:
 |---|---|---|---|
 | **Download** | [`LeitorPDF.exe`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe) (~36 MB) | [`.deb`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb) · [`.rpm`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm) · [`.flatpak`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak) (~40 MB) | [Abrir no navegador](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/) |
 | **Gera MP3** | ✅ | ✅ | ❌ lê em voz alta na hora |
-| **Vozes** | Neurais (Francisca, Antônio, Thalita…) | Neurais | As do navegador (no Edge, as mesmas vozes naturais) |
+| **Vozes** | Neurais (Francisca, Antônio, Thalita…) | Neurais | Naturais no aparelho (Faber, Cadu, Jeff), em qualquer navegador |
 | **Interface** | Janela própria | Janela própria | Navegador, inclusive no celular |
 | **Seus PDFs ficam** | No computador | No computador | No navegador (nada é enviado) |
 
@@ -148,7 +148,11 @@ Depois procure **"Leitor de PDF em Áudio"** no menu de aplicativos. O programa 
 
 ### 🌐 Mini (web)
 
-Abra **[valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/)**, arraste o PDF e clique em ▶. O texto é lido no próprio navegador e o PDF nunca sai do seu aparelho. Para ter as vozes naturais, use o **Microsoft Edge**.
+Abra **[valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/)**, arraste o PDF e clique em ▶. O PDF nunca sai do seu aparelho.
+
+- **Vozes naturais grátis em qualquer navegador** (Chrome, Edge, Firefox, Safari): Faber, Cadu e Jeff, vozes neurais do projeto [Piper](https://github.com/rhasspy/piper) geradas no próprio aparelho com WebAssembly. Cada voz é baixada uma única vez (63 MB) e fica guardada no navegador.
+- No Microsoft Edge, também dá para escolher as vozes da Microsoft.
+- Se a voz natural não puder ser usada (navegador antigo, por exemplo), o player passa sozinho para a voz do navegador.
 
 ### Bom saber
 

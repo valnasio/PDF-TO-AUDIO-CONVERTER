@@ -1,5 +1,6 @@
 // Leitor de PDF em Áudio — versão mini (100% no navegador).
-import { extractSegments } from "./pdf-text.js";
+import { extractSegments } from "./pdf-text.js?v=2.6.0";
+import { NEURAL_ID, NEURAL_VOICES, neuralSupported, prepareNeural, splitForQuickStart, synthNeural, warmNeural } from "./neural.js?v=2.6.0";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");
@@ -167,12 +168,26 @@ function renderPlayer(id) {
   const root = mount("#tpl-player");
   const playBtn = $("#pl-play", root), seek = $("#pl-seek", root), textBox = $("#pl-text", root);
   const voiceSel = $("#pl-voice", root), speedSel = $("#pl-speed", root), pageSel = $("#pl-page", root);
+  const status = $("#pl-status", root), hint = $("#pl-voice-hint", root);
   let doc = null, voices = [], idx = 0, playing = false, token = 0, renderedPage = 0, utter = null;
   let pageStart = new Map(), charsBefore = [];
 
-  const supported = "speechSynthesis" in window;
+  const browserTts = "speechSynthesis" in window;
+  const canNeural = neuralSupported();
+  const supported = browserTts || canNeural;
+  const isNeural = () => voiceSel.value.startsWith("neural:");
+  const neuralVoice = () => voiceSel.value.slice("neural:".length);
+
+  // Motor da voz natural: fila de trechos gerados à frente; cada trecho pronto já
+  // vira um áudio pré-carregado, então a troca de frase acontece sem silêncio.
+  let cur = null;  // áudio tocando agora
+  let endWaiter = null, neuralPaused = false;
+  const AHEAD = 6;
+  const urls = new Set();
+  const releaseAll = () => { urls.forEach((u) => URL.revokeObjectURL(u)); urls.clear(); };
 
   const save = () => { if (doc) { doc.pos = idx; store.put(doc); } };
+  const setStatus = (text) => { status.textContent = text || ""; status.hidden = !text; };
 
   const updateProgress = () => {
     const segs = doc.segments;
@@ -213,10 +228,13 @@ function renderPlayer(id) {
     updateProgress();
   };
 
-  const speak = () => {
+  const finished = () => { stop(); idx = 0; save(); highlight(); };
+
+  // ---------- vozes do navegador (speechSynthesis)
+  const speakBrowser = () => {
     const my = ++token;
     speechSynthesis.cancel();
-    if (idx >= doc.segments.length) { stop(); idx = 0; save(); return; }
+    if (idx >= doc.segments.length) { finished(); return; }
     highlight();
     utter = new SpeechSynthesisUtterance(doc.segments[idx].t);
     const v = voices.find((x) => x.voiceURI === voiceSel.value);
@@ -226,20 +244,143 @@ function renderPlayer(id) {
       if (my !== token || !playing) return;
       idx++;
       if (idx % 5 === 0) save();
-      speak();
+      speakBrowser();
     };
     utter.onerror = (e) => {
       if (my !== token || e.error === "interrupted" || e.error === "canceled") return;
-      idx++; speak();
+      idx++; speakBrowser();
     };
     speechSynthesis.speak(utter);
   };
 
-  const play = () => { if (!supported) return; playing = true; playBtn.textContent = "❚❚"; speak(); };
-  const stop = () => { playing = false; token++; speechSynthesis.cancel(); playBtn.textContent = "▶"; save(); };
+  // ---------- voz natural (Piper no aparelho)
+  const fallbackToBrowser = (err) => {
+    console.warn("Voz natural indisponível:", err);
+    const first = voices[0];
+    hint.innerHTML = 'A voz natural não funcionou neste navegador, então passamos a usar a voz do navegador. Para vozes naturais com MP3, <a class="link" href="../">baixe o aplicativo</a>.';
+    hint.hidden = false;
+    setStatus("");
+    if (!first) { stop(); return; }
+    voiceSel.value = first.voiceURI;
+    localStorage.setItem("voice", first.voiceURI);
+    if (playing) speakBrowser();
+  };
+
+  const speakNeural = async () => {
+    const my = ++token;
+    if (browserTts) speechSynthesis.cancel();
+    cur?.pause();
+    endWaiter?.(false);
+    releaseAll();
+    neuralPaused = false;
+    if (idx >= doc.segments.length) { finished(); return; }
+    highlight();
+    try {
+      await prepareNeural(neuralVoice(), (p) => { if (my === token) setStatus(`Baixando a voz natural (63 MB, só na primeira vez): ${Math.round(p * 100)}%`); });
+    } catch (e) { if (my === token) fallbackToBrowser(e); return; }
+    if (my !== token || !playing) return;
+
+    // fila: a primeira frase é dividida nas vírgulas para a voz começar logo
+    let nextSeg = idx;
+    const queue = [];
+    const fill = () => {
+      while (queue.length < AHEAD && nextSeg < doc.segments.length) {
+        const seg = nextSeg++;
+        const pieces = seg === idx && queue.length === 0 ? splitForQuickStart(doc.segments[seg].t) : [doc.segments[seg].t];
+        pieces.forEach((text, k) => {
+          const voice = neuralVoice();
+          const job = synthNeural(voice, text).then((blob) => {
+            // trecho sem fala (ex.: só pontuação): WAV vazio ou com menos de ~50 ms
+            if (blob.size < 44 + 22050 * 2 * 0.05) return null;
+            const url = URL.createObjectURL(blob);
+            urls.add(url);
+            const a = new Audio(url);
+            a.preload = "auto";
+            a.preservesPitch = true;
+            return a;
+          });
+          job.catch(() => {});
+          queue.push({ seg, last: k === pieces.length - 1, job });
+        });
+      }
+    };
+    fill();
+    while (my === token) {
+      const item = queue.shift();
+      if (!item) { finished(); return; }
+      idx = item.seg;
+      highlight();
+      let a;
+      const slow = setTimeout(() => { if (my === token) setStatus("Gerando a voz…"); }, 700);
+      try { a = await item.job; } catch (e) { clearTimeout(slow); if (my === token) fallbackToBrowser(e); return; }
+      clearTimeout(slow);
+      if (my !== token) return;
+      setStatus("");
+      fill();
+      if (!a) {  // trecho sem fala: segue para o próximo
+        if (item.last) idx = item.seg + 1;
+        continue;
+      }
+      cur = a;
+      a.playbackRate = Number(speedSel.value);
+      // Fim da frase: pelo evento "ended"; ou conferindo o estado do áudio a cada
+      // 250 ms (alguns navegadores deixam de disparar o evento); ou, se o áudio
+      // não começar em 3 s ou der erro, pula para a próxima frase em vez de travar.
+      const tPlay = performance.now();
+      const ended = new Promise((resolve) => {
+        let done = false;
+        const finish = (ok) => { if (!done) { done = true; clearInterval(poll); resolve(ok); } };
+        const poll = setInterval(() => {
+          const started = a.currentTime > 0;
+          if (a.ended || (a.duration && started && a.currentTime >= a.duration - 0.02)) finish(true);
+          else if (!started && !a.paused && performance.now() - tPlay > 3000) finish(true);
+          else if (a.error) finish(true);
+        }, 250);
+        endWaiter = finish;
+        a.onended = () => finish(true);
+        a.onerror = () => finish(true);
+      });
+      const playing = a.play();
+      const startOk = await Promise.race([
+        playing.then(() => true, () => false),
+        new Promise((r) => setTimeout(() => r("timeout"), 3000)),
+      ]);
+      if (startOk === false && my === token) { endWaiter?.(false); stop(); return; }  // navegador recusou tocar
+      const ok = await ended;
+      URL.revokeObjectURL(a.src); urls.delete(a.src);
+      if (!ok || my !== token) return;
+      if (item.last) {
+        idx = item.seg + 1;
+        if (idx % 5 === 0) save();
+      }
+    }
+  };
+
+  const speak = () => (isNeural() ? speakNeural() : speakBrowser());
+
+  const play = () => {
+    if (!supported) return;
+    playing = true;
+    playBtn.textContent = "❚❚";
+    // continuar de onde pausou, sem gerar a frase de novo
+    if (isNeural() && neuralPaused && cur) { neuralPaused = false; cur.play().catch(() => speak()); return; }
+    speak();
+  };
+  const pause = () => {
+    playing = false;
+    playBtn.textContent = "▶";
+    if (isNeural() && cur && !cur.ended) { cur.pause(); neuralPaused = true; save(); return; }
+    stop();
+  };
+  const stop = () => {
+    playing = false; token++;
+    if (browserTts) speechSynthesis.cancel();
+    cur?.pause(); endWaiter?.(false); releaseAll(); cur = null; neuralPaused = false;
+    playBtn.textContent = "▶"; setStatus(""); save();
+  };
   const jump = (i) => {
     idx = Math.max(0, Math.min(doc.segments.length - 1, i));
-    if (playing) speak(); else { highlight(); save(); }
+    if (playing) speak(); else { stop(); highlight(); save(); }
   };
 
   (async () => {
@@ -263,35 +404,41 @@ function renderPlayer(id) {
     speedSel.value = localStorage.getItem("speed") || "1";
     highlight();
 
-    const hint = $("#pl-voice-hint", root);
     if (!supported) {
-      hint.textContent = "Seu navegador não suporta leitura em voz alta. Use o Edge, Chrome ou Safari, ou baixe o app completo.";
+      hint.textContent = "Seu navegador não consegue ler em voz alta. Use uma versão atual do Chrome, Edge, Firefox ou Safari, ou baixe o aplicativo.";
       hint.hidden = false; playBtn.disabled = true; return;
     }
-    voices = rankVoices(await loadVoices());
-    if (!voices.length) {
-      hint.innerHTML = 'Nenhuma voz em português encontrada neste navegador. Tente o <b>Microsoft Edge</b> ou <a class="link" href="../">baixe o app completo</a>.';
-      hint.hidden = false;
-    } else if (!voices.some(isNatural)) {
-      hint.innerHTML = 'Dica: no <b>Microsoft Edge</b> você tem vozes naturais (Francisca, Antônio). Ou <a class="link" href="../">baixe o app completo</a> para vozes naturais em qualquer navegador e MP3.';
-      hint.hidden = false;
-    }
+    voices = browserTts ? rankVoices(await loadVoices()) : [];
+    const label = (v) => `${isNatural(v) ? "✨ " : ""}${esc(v.name.replace(/^Microsoft\s+/, "").replace(/\s*-\s*Portuguese.*$/i, "").replace(/\s*Online\s*\(Natural\)/i, ""))} (${esc(v.lang)})`;
+    const options = [];
+    if (canNeural) options.push(`<optgroup label="Vozes naturais no aparelho (qualquer navegador)">${NEURAL_VOICES.map((v) => `<option value="neural:${v.id}">✨ ${v.name} (pt-BR)</option>`).join("")}</optgroup>`);
+    if (voices.length) options.push(`<optgroup label="Vozes deste navegador">${voices.map((v) => `<option value="${esc(v.voiceURI)}">${label(v)}</option>`).join("")}</optgroup>`);
+    voiceSel.innerHTML = options.join("");
+
+    // voz padrão: a escolhida antes; senão uma voz natural do navegador (Edge); senão a Faber
     const saved = localStorage.getItem("voice");
-    voiceSel.innerHTML = voices.map((v) =>
-      `<option value="${esc(v.voiceURI)}">${isNatural(v) ? "✨ " : ""}${esc(v.name.replace(/^Microsoft\s+/, "").replace(/\s*-\s*Portuguese.*$/i, "").replace(/\s*Online\s*\(Natural\)/i, ""))} (${esc(v.lang)})</option>`
-    ).join("");
-    if (saved && voices.some((v) => v.voiceURI === saved)) voiceSel.value = saved;
+    const valid = (v) => [...voiceSel.options].some((o) => o.value === v);
+    voiceSel.value = valid(saved) ? saved : (voices.find(isNatural)?.voiceURI || (canNeural ? NEURAL_ID : voices[0]?.voiceURI || ""));
+    if (!voiceSel.value) {
+      hint.innerHTML = 'Nenhuma voz em português disponível neste navegador. <a class="link" href="../">Baixe o aplicativo</a>.';
+      hint.hidden = false; playBtn.disabled = true; return;
+    }
+    if (isNeural()) {
+      hint.textContent = "Esta voz é gerada no seu aparelho. Na primeira vez, ela é baixada (63 MB) e fica guardada para as próximas.";
+      hint.hidden = false;
+      warmNeural(neuralVoice());  // voz já guardada: deixa pronta em segundo plano
+    }
 
     if ("mediaSession" in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: doc.title, artist: "Leitor de PDF (mini)" });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: doc.title, artist: "Leitor de PDF em Áudio" });
       navigator.mediaSession.setActionHandler("play", play);
-      navigator.mediaSession.setActionHandler("pause", stop);
+      navigator.mediaSession.setActionHandler("pause", pause);
       navigator.mediaSession.setActionHandler("previoustrack", () => jump(idx - 1));
       navigator.mediaSession.setActionHandler("nexttrack", () => jump(idx + 1));
     }
   })();
 
-  playBtn.addEventListener("click", () => (playing ? stop() : play()));
+  playBtn.addEventListener("click", () => (playing ? pause() : play()));
   $("#pl-prev", root).addEventListener("click", () => jump(idx - 1));
   $("#pl-next", root).addEventListener("click", () => jump(idx + 1));
   seek.addEventListener("input", () => {
@@ -300,8 +447,18 @@ function renderPlayer(id) {
   });
   seek.addEventListener("change", () => jump(Number(seek.value)));
   pageSel.addEventListener("change", () => jump(pageStart.get(Number(pageSel.value))));
-  voiceSel.addEventListener("change", () => { localStorage.setItem("voice", voiceSel.value); if (playing) speak(); });
-  speedSel.addEventListener("change", () => { localStorage.setItem("speed", speedSel.value); updateProgress(); if (playing) speak(); });
+  voiceSel.addEventListener("change", () => {
+    localStorage.setItem("voice", voiceSel.value);
+    hint.hidden = !isNeural();
+    if (isNeural()) hint.textContent = "Esta voz é gerada no seu aparelho. Na primeira vez, ela é baixada (63 MB) e fica guardada para as próximas.";
+    if (playing) speak(); else stop();
+  });
+  speedSel.addEventListener("change", () => {
+    localStorage.setItem("speed", speedSel.value);
+    updateProgress();
+    if (cur) cur.playbackRate = Number(speedSel.value);  // voz natural: muda na hora, sem reiniciar
+    if (playing && !isNeural()) speak();
+  });
   textBox.addEventListener("click", (ev) => {
     const s = ev.target.closest(".s");
     if (s) { idx = Number(s.dataset.i); if (!playing) play(); else speak(); }
@@ -317,8 +474,13 @@ function renderPlayer(id) {
   const onHide = () => save();
   window.addEventListener("pagehide", onHide);
 
+  // para testes automáticos: estado do player
+  window.__player = () => ({ idx, playing, neural: isNeural(), voice: voiceSel.value,
+    audioTime: cur ? cur.currentTime : 0, audioPaused: cur ? cur.paused : true, rate: cur ? cur.playbackRate : 0,
+    status: status.textContent, hint: hint.hidden ? "" : hint.textContent });
+
   return () => {
-    if (supported) stop();
+    stop();
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("pagehide", onHide);
   };

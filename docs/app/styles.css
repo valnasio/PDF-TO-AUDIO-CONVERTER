@@ -248,7 +248,7 @@ select:hover, input[type=search]:hover { border-color: var(--ink-soft); }
 .compare > div + div { padding-left: 24px; border-left: 1px solid var(--line); }
 .compare h3 { font-size: 1.1rem; }
 .compare ul { margin: 0 0 12px; padding-left: 18px; color: var(--ink-soft); font-size: .95rem; }
-.hint { margin: 14px 0 0; font-size: .9rem; color: var(--warn); text-align: center; }
+.hint { margin: 14px 0 0; font-size: .9rem; text-align: center; }
 .hint .link { color: var(--link); }
 .readalong-text .page-mark { display: block; font-size: .85rem; font-weight: 700; color: var(--ink-soft); margin: 6px 0 10px; }
 .readalong-text p { white-space: normal; cursor: default; padding: 4px 0; }
@@ -265,3 +265,7 @@ select:hover, input[type=search]:hover { border-color: var(--ink-soft); }
   .topbar nav a.get-app, .brand-text { display: none; }
   .player .cover { max-width: 140px; }
 }
+
+/* Estado da voz natural (download e geração) */
+.status { margin: 12px 0 0; font-size: .9rem; color: var(--read); font-weight: 700; text-align: center; }
+.hint { color: var(--ink-soft); }
