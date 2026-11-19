@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leitor de PDF em Áudio</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="#/" class="brand"><span class="brand-icon">🎧</span> Leitor de PDF</a>
+    <nav>
+      <a href="#/" data-nav="upload">Converter</a>
+      <a href="#/biblioteca" data-nav="library">Biblioteca</a>
+    </nav>
+  </header>
+
+  <main id="app"></main>
+
+  <!-- ============ TELA: ENVIO ============ -->
+  <template id="tpl-upload">
+    <section class="screen upload">
+      <h1>Transforme qualquer PDF em audiolivro</h1>
+      <p class="muted">Voz neural natural, texto completo e sem palavras cortadas — inclusive em livros enormes.</p>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file" accept="application/pdf,.pdf" hidden />
+        <div class="drop-icon">📄</div>
+        <div class="drop-title">Arraste o PDF aqui</div>
+        <div class="muted">ou <span class="link">clique para escolher</span></div>
+        <div class="file-chosen" id="file-chosen" hidden></div>
+      </label>
+
+      <div class="voices">
+        <h3>Escolha a voz</h3>
+        <div class="voice-list" id="voice-list"></div>
+      </div>
+
+      <button class="btn primary big" id="convert" disabled>Converter em áudio</button>
+
+      <div class="upload-progress" id="upload-progress" hidden>
+        <div class="bar"><div class="fill" id="upload-fill"></div></div>
+        <span id="upload-label">Enviando…</span>
+      </div>
+      <p class="error" id="upload-error" hidden></p>
+    </section>
+  </template>
+
+  <!-- ============ TELA: CONVERSÃO (LOADING) ============ -->
+  <template id="tpl-converting">
+    <section class="screen converting">
+      <div class="loader">
+        <div class="wave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      </div>
+      <h2 id="conv-title">…</h2>
+      <p class="phase" id="conv-phase">Preparando…</p>
+      <div class="bar big"><div class="fill" id="conv-fill"></div></div>
+      <div class="conv-stats">
+        <span id="conv-percent">0%</span>
+        <span id="conv-detail"></span>
+        <span id="conv-eta"></span>
+      </div>
+      <ol class="steps" id="conv-steps">
+        <li data-step="extracting">Lendo o PDF</li>
+        <li data-step="synthesizing">Gerando a narração</li>
+        <li data-step="finalizing">Montando o áudio</li>
+        <li data-step="ready">Pronto</li>
+      </ol>
+      <p class="muted small">Você pode sair desta tela: a conversão continua e o arquivo aparecerá na biblioteca.</p>
+      <div class="error-box" id="conv-error" hidden>
+        <p id="conv-error-msg"></p>
+        <button class="btn primary" id="conv-retry">Tentar novamente</button>
+      </div>
+    </section>
+  </template>
+
+  <!-- ============ TELA: PLAYER ============ -->
+  <template id="tpl-player">
+    <section class="screen player">
+      <div class="player-card">
+        <div class="cover" id="pl-cover"></div>
+        <div class="player-main">
+          <h2 id="pl-title"></h2>
+          <p class="muted" id="pl-meta"></p>
+
+          <audio id="audio" preload="metadata"></audio>
+
+          <div class="seek">
+            <span id="pl-cur">0:00</span>
+            <input type="range" id="pl-seek" min="0" max="1000" value="0" />
+            <span id="pl-dur">0:00</span>
+          </div>
+
+          <div class="controls">
+            <button class="btn icon" id="pl-back" title="Voltar 15s">↺15</button>
+            <button class="btn play" id="pl-play" title="Reproduzir">▶</button>
+            <button class="btn icon" id="pl-fwd" title="Avançar 30s">30↻</button>
+          </div>
+
+          <div class="extra">
+            <label>Velocidade
+              <select id="pl-speed">
+                <option value="0.75">0.75×</option>
+                <option value="0.9">0.9×</option>
+                <option value="1" selected>1×</option>
+                <option value="1.15">1.15×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="1.75">1.75×</option>
+                <option value="2">2×</option>
+              </select>
+            </label>
+            <label>Ir para página
+              <select id="pl-page"></select>
+            </label>
+            <a class="btn ghost" id="pl-read">📖 Ler PDF</a>
+            <a class="btn ghost" id="pl-download">⬇ Baixar MP3</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="readalong">
+        <div class="readalong-head">
+          <h3>Acompanhe a leitura</h3>
+          <span class="muted" id="pl-curpage"></span>
+        </div>
+        <div class="readalong-text" id="pl-text"></div>
+      </div>
+    </section>
+  </template>
+
+  <!-- ============ TELA: BIBLIOTECA ============ -->
+  <template id="tpl-library">
+    <section class="screen library">
+      <div class="lib-head">
+        <h1>Biblioteca</h1>
+        <input type="search" id="lib-search" placeholder="Buscar…" />
+      </div>
+      <div class="lib-grid" id="lib-grid"></div>
+      <div class="empty" id="lib-empty" hidden>
+        <div class="drop-icon">📚</div>
+        <p>Nenhum arquivo ainda.</p>
+        <a href="#/" class="btn primary">Converter meu primeiro PDF</a>
+      </div>
+    </section>
+  </template>
+
+  <!-- ============ TELA: LEITOR PDF ============ -->
+  <template id="tpl-reader">
+    <section class="screen reader">
+      <div class="reader-bar">
+        <a href="#/biblioteca" class="btn ghost">← Biblioteca</a>
+        <h2 id="rd-title"></h2>
+        <a class="btn primary" id="rd-listen">🎧 Ouvir</a>
+      </div>
+      <iframe id="rd-frame" title="PDF"></iframe>
+    </section>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

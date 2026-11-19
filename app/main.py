@@ -1,0 +1,160 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import shutil
+import sys
+import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
+
+from . import db
+from .config import LOG_PATH, STATIC_DIR
+from .pdf_text import pdf_title
+from .tts import DEFAULT_VOICE, VOICE_IDS, VOICES, voice_sample
+from .worker import converter, doc_dir
+
+_handlers: list[logging.Handler] = [logging.FileHandler(LOG_PATH, encoding="utf-8")]
+if sys.stderr is not None:  # no executável sem console não há stderr
+    _handlers.append(logging.StreamHandler())
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s", handlers=_handlers
+)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    converter.start()
+    yield
+    await converter.stop()
+
+
+app = FastAPI(title="PDF em Áudio", lifespan=lifespan)
+_sample_cache: dict[str, bytes] = {}
+
+
+def _public(doc: dict) -> dict:
+    d = dict(doc)
+    if d["status"] == "queued":
+        ahead = [x for x in db.list_active() if x["created_at"] < d["created_at"]]
+        d["queue_position"] = len(ahead)
+    return d
+
+
+def _require(doc_id: str) -> dict:
+    doc = db.get(doc_id)
+    if not doc:
+        raise HTTPException(404, "Documento não encontrado")
+    return doc
+
+
+@app.get("/api/voices")
+def voices():
+    return {"voices": VOICES, "default": DEFAULT_VOICE}
+
+
+@app.get("/api/voices/{voice}/sample")
+async def sample(voice: str):
+    if voice not in VOICE_IDS:
+        raise HTTPException(404, "Voz desconhecida")
+    if voice not in _sample_cache:
+        try:
+            _sample_cache[voice] = await voice_sample(voice)
+        except Exception as exc:
+            raise HTTPException(502, f"Serviço de voz indisponível: {exc}")
+    return Response(_sample_cache[voice], media_type="audio/mpeg")
+
+
+@app.post("/api/documents", status_code=201)
+async def upload(file: UploadFile = File(...), voice: str = Form(DEFAULT_VOICE)):
+    if voice not in VOICE_IDS:
+        raise HTTPException(400, "Voz inválida")
+    head = await file.read(5)
+    if head != b"%PDF-":
+        raise HTTPException(400, "O arquivo enviado não é um PDF válido")
+    await file.seek(0)
+
+    doc_id = uuid.uuid4().hex[:12]
+    folder = doc_dir(doc_id)
+    folder.mkdir(parents=True)
+    dest = folder / "source.pdf"
+
+    def save() -> None:  # cópia em blocos: suporta arquivos grandes sem estourar memória
+        with open(dest, "wb") as out:
+            shutil.copyfileobj(file.file, out, 4 * 1024 * 1024)
+
+    await asyncio.to_thread(save)
+    filename = Path(file.filename or "documento.pdf").name
+    title = await asyncio.to_thread(pdf_title, str(dest)) or Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+    doc = db.create(doc_id, title, filename, voice)
+    converter.enqueue(doc_id)
+    return _public(doc)
+
+
+@app.get("/api/documents")
+def list_documents():
+    return {"documents": [_public(d) for d in db.list_all()]}
+
+
+@app.get("/api/documents/{doc_id}")
+def get_document(doc_id: str):
+    return _public(_require(doc_id))
+
+
+@app.post("/api/documents/{doc_id}/retry")
+def retry(doc_id: str):
+    doc = _require(doc_id)
+    if doc["status"] != "error":
+        raise HTTPException(409, "Só é possível tentar novamente conversões com erro")
+    db.update(doc_id, status="queued", error=None)
+    converter.enqueue(doc_id)
+    return _public(db.get(doc_id))
+
+
+@app.delete("/api/documents/{doc_id}", status_code=204)
+async def delete_document(doc_id: str):
+    _require(doc_id)
+    converter.cancel(doc_id)
+    db.delete(doc_id)
+    await asyncio.sleep(0.2)
+    await asyncio.to_thread(shutil.rmtree, doc_dir(doc_id), True)
+    return Response(status_code=204)
+
+
+@app.get("/api/documents/{doc_id}/audio")
+def audio(doc_id: str, download: bool = False):
+    doc = _require(doc_id)
+    path = doc_dir(doc_id) / "audio.mp3"
+    if doc["status"] != "ready" or not path.exists():
+        raise HTTPException(409, "Áudio ainda não está pronto")
+    name = f"{Path(doc['filename']).stem}.mp3"
+    return FileResponse(
+        path, media_type="audio/mpeg", filename=name,
+        content_disposition_type="attachment" if download else "inline",
+    )
+
+
+@app.get("/api/documents/{doc_id}/pdf")
+def pdf(doc_id: str):
+    doc = _require(doc_id)
+    return FileResponse(
+        doc_dir(doc_id) / "source.pdf", media_type="application/pdf",
+        filename=doc["filename"], content_disposition_type="inline",
+    )
+
+
+@app.get("/api/documents/{doc_id}/timeline")
+def timeline(doc_id: str):
+    _require(doc_id)
+    path = doc_dir(doc_id) / "timeline.json"
+    if not path.exists():
+        raise HTTPException(409, "Linha do tempo ainda não está pronta")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

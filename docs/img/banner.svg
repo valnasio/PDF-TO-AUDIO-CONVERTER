@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e1a3f"/>
+      <stop offset="0.6" stop-color="#0f1117"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c6cff"/>
+      <stop offset="1" stop-color="#36c5b0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c6cff"/>
+      <stop offset="1" stop-color="#36c5b0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="380" rx="28" fill="url(#bg)"/>
+
+  <!-- ícone -->
+  <g transform="translate(92 98)">
+    <rect width="184" height="184" rx="40" fill="#7c6cff"/>
+    <rect x="38" y="28" width="80" height="104" rx="8" fill="#fff"/>
+    <g stroke="#c0bbf2" stroke-width="7" stroke-linecap="round">
+      <line x1="52" y1="54" x2="104" y2="54"/><line x1="52" y1="72" x2="104" y2="72"/>
+      <line x1="52" y1="90" x2="104" y2="90"/><line x1="52" y1="108" x2="88" y2="108"/>
+    </g>
+    <circle cx="124" cy="128" r="34" fill="#36c5b0"/>
+    <path d="M115 112 L115 144 L141 128 Z" fill="#fff"/>
+  </g>
+
+  <!-- texto -->
+  <text x="330" y="165" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="58" font-weight="700" fill="#e8eaf0">Leitor de PDF em Áudio</text>
+  <text x="332" y="215" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="25" fill="#8d93a5">Transforme qualquer PDF em audiolivro com voz natural.</text>
+  <rect x="332" y="246" width="430" height="5" rx="2.5" fill="url(#accent)"/>
+
+  <!-- onda sonora -->
+  <g fill="url(#bar)">
+    <rect x="990" y="285" width="11" height="30" rx="5.5"/>
+    <rect x="1012" y="268" width="11" height="64" rx="5.5"/>
+    <rect x="1034" y="250" width="11" height="100" rx="5.5"/>
+    <rect x="1056" y="275" width="11" height="50" rx="5.5"/>
+    <rect x="1078" y="260" width="11" height="80" rx="5.5"/>
+    <rect x="1100" y="282" width="11" height="36" rx="5.5"/>
+    <rect x="1122" y="271" width="11" height="58" rx="5.5"/>
+    <rect x="1144" y="289" width="11" height="22" rx="5.5"/>
+  </g>
+</svg>

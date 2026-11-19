@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leitor de PDF em Áudio: transforme PDFs em audiolivros</title>
+  <meta name="description" content="Converta qualquer PDF em audiolivro com voz natural em português. Grátis, para Windows, sem instalação." />
+  <meta property="og:title" content="Leitor de PDF em Áudio" />
+  <meta property="og:description" content="Transforme qualquer PDF em audiolivro com voz natural." />
+  <meta property="og:image" content="img/player.png" />
+  <link rel="icon" href="img/icon.png" />
+  <style>
+    :root {
+      --bg: #0f1117; --bg2: #151823; --card: #1b1f2b; --line: #2a2f3d;
+      --text: #e8eaf0; --muted: #8d93a5; --accent: #7c6cff; --accent2: #36c5b0;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: inherit; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    .muted { color: var(--muted); }
+    .grad { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+    /* topo */
+    nav { position: sticky; top: 0; z-index: 10; background: rgba(15,17,23,.75); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
+    .brand img { width: 30px; height: 30px; }
+    nav .links { display: flex; gap: 22px; align-items: center; font-size: .95rem; }
+    nav .links a { text-decoration: none; color: var(--muted); }
+    nav .links a:hover { color: var(--text); }
+
+    /* hero */
+    .hero { position: relative; overflow: hidden; padding: 90px 0 60px; text-align: center; }
+    .hero::before { content: ""; position: absolute; inset: -40% -10% auto; height: 700px; background: radial-gradient(closest-side, rgba(124,108,255,.35), transparent 70%), radial-gradient(closest-side at 70% 60%, rgba(54,197,176,.18), transparent 70%); filter: blur(20px); z-index: -1; }
+    .hero img.logo { width: 104px; height: 104px; filter: drop-shadow(0 18px 40px rgba(124,108,255,.55)); }
+    .hero h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.1; margin: 26px 0 16px; letter-spacing: -.02em; }
+    .hero p.lead { font-size: 1.2rem; max-width: 640px; margin: 0 auto 34px; color: var(--muted); }
+    .download { display: inline-flex; align-items: center; gap: 14px; padding: 18px 34px; border-radius: 16px; background: linear-gradient(135deg, var(--accent), #5d4dff); color: #fff; text-decoration: none; font-size: 1.15rem; font-weight: 700; box-shadow: 0 12px 40px rgba(124,108,255,.45); transition: transform .15s, box-shadow .15s; }
+    .download:hover { transform: translateY(-2px); box-shadow: 0 18px 50px rgba(124,108,255,.6); }
+    .download svg { width: 26px; height: 26px; }
+    .download small { display: block; font-weight: 400; font-size: .8rem; opacity: .85; }
+    .meta { margin-top: 16px; font-size: .9rem; color: var(--muted); }
+    .meta span + span::before { content: "·"; margin: 0 10px; }
+    .screenshot { margin: 60px auto 0; max-width: 980px; border-radius: 18px; border: 1px solid var(--line); overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,.6); background: var(--bg2); }
+    .screenshot .chrome { display: flex; gap: 7px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .screenshot .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #3a3f50; }
+    .screenshot img { display: block; width: 100%; }
+
+    section { padding: 80px 0; }
+    h2 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); margin: 0 0 12px; text-align: center; letter-spacing: -.01em; }
+    .sub { text-align: center; color: var(--muted); max-width: 640px; margin: 0 auto 48px; }
+
+    /* recursos */
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 900px) { .features { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .features { grid-template-columns: 1fr; } }
+    .feature { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px; transition: border-color .2s, transform .2s; }
+    .feature:hover { border-color: #3d3a6e; transform: translateY(-3px); }
+    .feature .ico { font-size: 1.8rem; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: #24204a; margin-bottom: 14px; }
+    .feature h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .feature p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+    /* galeria */
+    .tabs { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 26px; }
+    .tabs button { background: var(--card); color: var(--muted); border: 1px solid var(--line); padding: 10px 18px; border-radius: 12px; cursor: pointer; font-size: .95rem; }
+    .tabs button.active { color: #fff; border-color: var(--accent); background: #24204a; }
+    .gallery { max-width: 980px; margin: 0 auto; }
+    .gallery img { width: 100%; border-radius: 16px; border: 1px solid var(--line); display: none; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+    .gallery img.active { display: block; animation: fade .3s ease; }
+    .gallery p { text-align: center; color: var(--muted); margin-top: 16px; }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* passos */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; counter-reset: step; }
+    .step { position: relative; padding: 28px 26px 26px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+    .step::before { counter-increment: step; content: counter(step); position: absolute; top: -18px; left: 24px; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+    .step h3 { margin: 6px 0 6px; }
+    .step p { margin: 0; color: var(--muted); }
+
+    /* história */
+    .story { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .story .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 28px; }
+    .story .card.now { border-color: #3d3a6e; background: linear-gradient(180deg, #211d42, var(--card)); }
+    .story h3 { margin: 0 0 4px; }
+    .story .when { font-size: .85rem; color: var(--muted); margin-bottom: 14px; }
+    .story ul { margin: 0; padding-left: 0; list-style: none; }
+    .story li { padding: 7px 0; border-top: 1px solid var(--line); color: var(--muted); }
+    .story li:first-child { border-top: 0; }
+    .story .now li { color: var(--text); }
+    .story-text { max-width: 760px; margin: 0 auto 40px; color: var(--muted); text-align: center; font-size: 1.05rem; }
+
+    /* faq */
+    .faq { max-width: 760px; margin: 0 auto; }
+    details { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; margin-bottom: 12px; }
+    summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+    summary::after { content: "+"; color: var(--accent); font-size: 1.3rem; line-height: 1; }
+    details[open] summary::after { content: "–"; }
+    details p { color: var(--muted); margin: 12px 0 0; }
+
+    /* cta final */
+    .cta { text-align: center; padding: 70px 24px; border-radius: 28px; background: radial-gradient(600px 300px at 50% 0%, rgba(124,108,255,.35), transparent), var(--bg2); border: 1px solid var(--line); }
+    footer { padding: 40px 0; text-align: center; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--line); margin-top: 80px; }
+    footer a { color: var(--text); }
+
+    @media (max-width: 760px) {
+      nav .links a:not(.gh) { display: none; }
+      .story { grid-template-columns: 1fr; }
+      .hero { padding-top: 60px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="wrap">
+      <a href="#" class="brand"><img src="img/icon.png" alt="" /> Leitor de PDF em Áudio</a>
+      <div class="links">
+        <a href="#recursos">Recursos</a>
+        <a href="#telas">Telas</a>
+        <a href="#historia">História</a>
+        <a href="#faq">Dúvidas</a>
+        <a class="gh" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <img class="logo" src="img/icon.png" alt="Ícone do Leitor de PDF em Áudio" />
+      <h1>Seus PDFs viram<br /><span class="grad">audiolivros</span> com voz natural</h1>
+      <p class="lead">Arraste um PDF, escolha a voz e ouça. Funciona com livros inteiros, sem palavras cortadas e sem precisar instalar nada.</p>
+      <a class="download js-download" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span>Baixar para Windows<small class="js-version">LeitorPDF.exe</small></span>
+      </a>
+      <div class="meta"><span>Windows 10 e 11</span><span class="js-size">~36 MB</span><span>Grátis</span></div>
+
+      <div class="screenshot">
+        <div class="chrome"><i></i><i></i><i></i></div>
+        <img src="img/player.png" alt="Player do Leitor de PDF em Áudio com leitura acompanhada" />
+      </div>
+    </div>
+  </header>
+
+  <section id="recursos">
+    <div class="wrap">
+      <h2>Feito para <span class="grad">ouvir de verdade</span></h2>
+      <p class="sub">Tudo o que faltava para transformar um PDF num audiolivro agradável de ouvir.</p>
+      <div class="features">
+        <div class="feature"><div class="ico">🗣️</div><h3>Voz natural</h3><p>Vozes neurais em português do Brasil e de Portugal, com entonação humana em vez de voz robótica.</p></div>
+        <div class="feature"><div class="ico">📚</div><h3>Livros enormes</h3><p>PDFs com milhares de páginas são convertidos num único áudio, com navegação por página.</p></div>
+        <div class="feature"><div class="ico">✅</div><h3>Texto completo</h3><p>Nenhuma palavra cortada ou pulada. Cada trecho é conferido e refeito se faltar algo.</p></div>
+        <div class="feature"><div class="ico">👀</div><h3>Leitura acompanhada</h3><p>O texto acompanha a narração. Clique em qualquer parágrafo para pular até ele.</p></div>
+        <div class="feature"><div class="ico">🔁</div><h3>Continua de onde parou</h3><p>Fechou o programa no meio? A conversão e a sua escuta retomam exatamente do mesmo ponto.</p></div>
+        <div class="feature"><div class="ico">🖱️</div><h3>Zero configuração</h3><p>Um único arquivo. Sem Python, sem FFmpeg, sem terminal. É só dar dois cliques.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="telas" style="background: var(--bg2);">
+    <div class="wrap">
+      <h2>Conheça as telas</h2>
+      <p class="sub">Do envio do PDF à sua biblioteca de audiolivros.</p>
+      <div class="tabs" role="tablist">
+        <button class="active" data-shot="0">📤 Envio</button>
+        <button data-shot="1">⏳ Conversão</button>
+        <button data-shot="2">🎧 Player</button>
+        <button data-shot="3">📚 Biblioteca</button>
+      </div>
+      <div class="gallery">
+        <img class="active" src="img/envio.png" alt="Tela de envio" data-caption="Arraste o PDF, escolha a voz e ouça uma amostra antes de converter." />
+        <img src="img/conversao.png" alt="Tela de conversão" data-caption="Acompanhe cada etapa da conversão, com percentual e tempo restante." />
+        <img src="img/player.png" alt="Player" data-caption="Velocidade ajustável, ir para página, texto acompanhando a narração e download do MP3." />
+        <img src="img/biblioteca.png" alt="Biblioteca" data-caption="Todos os seus arquivos num só lugar: ouça o áudio ou leia o PDF original." />
+        <p id="caption">Arraste o PDF, escolha a voz e ouça uma amostra antes de converter.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="como">
+    <div class="wrap">
+      <h2>Comece em 3 passos</h2>
+      <p class="sub">Em menos de um minuto você já está ouvindo.</p>
+      <div class="steps">
+        <div class="step"><h3>Baixe</h3><p>Clique em <b>Baixar para Windows</b> e salve o <code>LeitorPDF.exe</code> onde preferir.</p></div>
+        <div class="step"><h3>Abra</h3><p>Dê dois cliques no arquivo. O programa abre numa janela própria, sem instalação.</p></div>
+        <div class="step"><h3>Ouça</h3><p>Arraste o PDF, escolha a voz e clique em <b>Converter em áudio</b>. Pronto!</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="historia" style="background: var(--bg2);">
+    <div class="wrap">
+      <h2>Do script ao aplicativo</h2>
+      <p class="story-text">O projeto começou há cerca de 4 anos como um script simples, feito à mão e inspirado por um vídeo do canal Hashtag Programação. Ele funcionava, mas travou num problema que eu não consegui resolver na época: <b>PDFs grandes</b>. Com a chegada das ferramentas de IA, voltei a ele para destravar o que tinha ficado pendente.</p>
+      <div class="story">
+        <div class="card">
+          <h3>Versão original</h3>
+          <div class="when">feita manualmente · ~4 anos atrás</div>
+          <ul>
+            <li>Cortes fixos de texto que quebravam palavras</li>
+            <li>Voz robotizada (gTTS)</li>
+            <li>Um MP3 solto por página</li>
+            <li>Editar o código e rodar no terminal</li>
+            <li>Python + FFmpeg instalados à mão</li>
+          </ul>
+        </div>
+        <div class="card now">
+          <h3>Versão atual</h3>
+          <div class="when">reconstruída com apoio de IA</div>
+          <ul>
+            <li>Divisão só entre frases: milhares de páginas</li>
+            <li>Vozes neurais naturais</li>
+            <li>Um audiolivro único, com navegação por página</li>
+            <li>Interface com biblioteca e player</li>
+            <li>Um único <code>.exe</code>, dois cliques</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2>Dúvidas frequentes</h2>
+      <p class="sub">&nbsp;</p>
+      <div class="faq">
+        <details><summary>O Windows mostrou "O Windows protegeu o computador". É seguro?</summary><p>Sim. Esse aviso aparece em programas que não têm assinatura digital paga. Clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>. O código-fonte completo está aberto no GitHub.</p></details>
+        <details><summary>Precisa de internet?</summary><p>Somente durante a conversão, porque as vozes neurais são geradas online. Depois de pronto, o áudio pode ser ouvido sem internet.</p></details>
+        <details><summary>Quanto tempo demora para converter?</summary><p>Cerca de 1 minuto para cada 15 a 20 minutos de áudio. Um livro de 70 páginas fica pronto em poucos minutos. Você pode continuar usando o programa enquanto isso.</p></details>
+        <details><summary>Tem limite de páginas?</summary><p>Não. O programa foi feito justamente para PDFs grandes: testamos documentos com mais de 2.000 páginas.</p></details>
+        <details><summary>Funciona com PDF escaneado?</summary><p>Ainda não. O PDF precisa ter texto selecionável. Documentos que são apenas imagens exigiriam reconhecimento de texto (OCR).</p></details>
+        <details><summary>Onde ficam meus arquivos?</summary><p>Na pasta <code>%LOCALAPPDATA%\LeitorPDF</code>. Você também pode baixar o MP3 de cada livro direto pelo player.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="cta">
+      <h2>Pronto para ouvir seus PDFs?</h2>
+      <p class="sub" style="margin-bottom: 30px;">Grátis, leve e sem instalação.</p>
+      <a class="download js-download" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span>Baixar para Windows<small class="js-version">LeitorPDF.exe</small></span>
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      Código aberto no <a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER">GitHub</a> ·
+      Vozes por <a href="https://github.com/rany2/edge-tts">edge-tts</a>
+    </div>
+  </footer>
+
+  <script>
+    // Galeria de telas
+    const tabs = document.querySelectorAll(".tabs button");
+    const shots = document.querySelectorAll(".gallery img");
+    tabs.forEach((btn) => btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.shot);
+      tabs.forEach((b) => b.classList.toggle("active", b === btn));
+      shots.forEach((img, j) => img.classList.toggle("active", j === i));
+      document.getElementById("caption").textContent = shots[i].dataset.caption;
+    }));
+
+    // Versão e tamanho reais a partir da última release do GitHub
+    fetch("https://api.github.com/repos/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((rel) => {
+        const asset = (rel.assets || []).find((a) => a.name.toLowerCase().endsWith(".exe"));
+        if (!asset) return;
+        document.querySelectorAll(".js-download").forEach((a) => (a.href = asset.browser_download_url));
+        document.querySelectorAll(".js-version").forEach((s) => (s.textContent = `Versão ${rel.tag_name} · ${asset.name}`));
+        document.querySelector(".js-size").textContent = `${(asset.size / 1048576).toFixed(0)} MB`;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
