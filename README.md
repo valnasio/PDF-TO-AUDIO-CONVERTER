@@ -227,4 +227,20 @@ Contribuições são bem-vindas! Se quiser melhorar o projeto, abra uma issue pa
 
 ## 📜 Licença
 
-[Não aplicável] 🚫
+O código deste projeto está sob a licença **[MIT](LICENSE)**: você pode usar, copiar, modificar e distribuir livremente, desde que mantenha o aviso de copyright.
+
+### Componentes de terceiros
+
+Os executáveis (`.exe`, `.deb`, `.rpm` e `.flatpak`) incluem estas bibliotecas, cada uma com a sua própria licença:
+
+| Componente | Licença | Observação |
+|---|---|---|
+| [PyMuPDF](https://github.com/pymupdf/PyMuPDF) (leitura de PDF) | AGPL-3.0 | Quem distribuir os executáveis precisa disponibilizar o código-fonte completo, como este repositório já faz |
+| [edge-tts](https://github.com/rany2/edge-tts) (vozes) | LGPL-3.0 | |
+| FastAPI, Pydantic | MIT | |
+| Starlette, Uvicorn, pywebview | BSD-3-Clause | |
+| aiohttp, python-multipart | Apache-2.0 | |
+| certifi | MPL-2.0 | |
+| Fontes Bricolage Grotesque e Atkinson Hyperlegible | SIL OFL 1.1 | [Detalhes](docs/fonts/LICENSE-fonts.txt) |
+
+As vozes são geradas pelo serviço online de leitura em voz alta da Microsoft, por meio do edge-tts. Este projeto não tem relação oficial com a Microsoft.

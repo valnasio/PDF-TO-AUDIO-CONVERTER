@@ -4,7 +4,7 @@
   <name>Leitor de PDF em Áudio</name>
   <summary>Transforme PDFs em audiolivros com voz natural</summary>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-proprietary</project_license>
+  <project_license>MIT</project_license>
   <developer id="io.github.valnasio">
     <name>valnasio</name>
   </developer>
