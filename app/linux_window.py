@@ -48,7 +48,6 @@ def main() -> None:
     win = Gtk.Window(title=title)
     win.set_default_size(1240, 860)
     win.set_size_request(820, 600)
-    win.set_wmclass("leitor-pdf", "Leitor de PDF em Áudio")
     if icon and os.path.exists(icon):
         win.set_icon_from_file(icon)
 

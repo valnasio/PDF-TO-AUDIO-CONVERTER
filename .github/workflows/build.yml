@@ -46,7 +46,7 @@ jobs:
       - name: Teste do .deb (instala dependências e abre a janela)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ./dist/leitor-pdf_amd64.deb xvfb
+          sudo apt-get install -y -qq ./dist/leitor-pdf_amd64.deb xvfb desktop-file-utils
           export PDF_AUDIO_DATA=/tmp/lt
           xvfb-run -a leitor-pdf --port 8777 &
           for i in $(seq 1 40); do curl -sf localhost:8777/api/voices >/dev/null && break; sleep 1; done
