@@ -1,0 +1,54 @@
+# Flatpak do Leitor de PDF em Áudio (distribuído na Release do GitHub, fora do Flathub).
+#
+# Empacota o executável Linux gerado pelo PyInstaller (dist/LeitorPDF). A janela
+# usa GTK 3 + WebKitGTK 4.1 e o Python com PyGObject que já vêm no runtime GNOME.
+# O GNOME 51 é o último runtime com WebKitGTK 4.1; para runtimes mais novos a
+# janela precisará migrar para WebKitGTK 6.0 (GTK 4).
+#
+# Gerar localmente (Linux, com flatpak-builder):
+#   ./build.sh   # cria dist/LeitorPDF
+#   flatpak-builder --user --install-deps-from=flathub --repo=build/flatpak-repo --force-clean \
+#     build/flatpak packaging/flatpak/io.github.valnasio.LeitorPDF.yml
+#   flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+#     build/flatpak-repo dist/leitor-pdf.flatpak io.github.valnasio.LeitorPDF
+app-id: io.github.valnasio.LeitorPDF
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: leitor-pdf
+
+finish-args:
+  # Vozes neurais geradas online e servidor interno em 127.0.0.1
+  - --share=network
+  # Janela (Wayland, com X11 como alternativa) e aceleração gráfica
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Reprodução de áudio no player
+  - --socket=pulseaudio
+
+build-options:
+  # O executável já vem otimizado do PyInstaller: não remover símbolos de novo
+  no-debuginfo: true
+  strip: false
+
+modules:
+  - name: leitor-pdf
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 LeitorPDF /app/lib/leitor-pdf/LeitorPDF
+      - mkdir -p /app/bin
+      - ln -s /app/lib/leitor-pdf/LeitorPDF /app/bin/leitor-pdf
+      - install -Dm644 io.github.valnasio.LeitorPDF.desktop /app/share/applications/io.github.valnasio.LeitorPDF.desktop
+      - install -Dm644 icon.png /app/share/icons/hicolor/256x256/apps/io.github.valnasio.LeitorPDF.png
+      - install -Dm644 io.github.valnasio.LeitorPDF.metainfo.xml /app/share/metainfo/io.github.valnasio.LeitorPDF.metainfo.xml
+    sources:
+      - type: file
+        path: ../../dist/LeitorPDF
+      - type: file
+        path: ../../assets/icon.png
+      - type: file
+        path: io.github.valnasio.LeitorPDF.desktop
+      - type: file
+        path: io.github.valnasio.LeitorPDF.metainfo.xml

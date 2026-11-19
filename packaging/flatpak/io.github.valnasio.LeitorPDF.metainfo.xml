@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.valnasio.LeitorPDF</id>
+  <name>Leitor de PDF em Áudio</name>
+  <summary>Transforme PDFs em audiolivros com voz natural</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <developer id="io.github.valnasio">
+    <name>valnasio</name>
+  </developer>
+
+  <description>
+    <p>
+      Arraste um PDF, escolha a voz e o Leitor de PDF narra o livro inteiro,
+      página por página, com vozes neurais em português do Brasil e de Portugal.
+    </p>
+    <ul>
+      <li>Um áudio MP3 por página, numa pasta com o nome dos capítulos, e o livro completo</li>
+      <li>Cada trecho narrado é conferido palavra por palavra e refeito se algo faltar</li>
+      <li>Funciona com livros de milhares de páginas e continua de onde parou</li>
+      <li>Biblioteca com player, leitura acompanhada e leitor de PDF</li>
+      <li>Modo claro e noturno</li>
+    </ul>
+    <p>É preciso estar conectado à internet durante a conversão, porque as vozes são geradas online.</p>
+  </description>
+
+  <launchable type="desktop-id">io.github.valnasio.LeitorPDF.desktop</launchable>
+
+  <url type="homepage">https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/</url>
+  <url type="bugtracker">https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/issues</url>
+  <url type="vcs-browser">https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Player com leitura acompanhada</caption>
+      <image>https://raw.githubusercontent.com/valnasio/PDF-TO-AUDIO-CONVERTER/v2.3.0/docs/img/player.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Áudios por página</caption>
+      <image>https://raw.githubusercontent.com/valnasio/PDF-TO-AUDIO-CONVERTER/v2.3.0/docs/img/arquivos.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Envio do PDF e escolha da voz</caption>
+      <image>https://raw.githubusercontent.com/valnasio/PDF-TO-AUDIO-CONVERTER/v2.3.0/docs/img/envio.png</image>
+    </screenshot>
+  </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#d7d4f7</color>
+    <color type="primary" scheme_preference="dark">#2c22a8</color>
+  </branding>
+
+  <content_rating type="oars-1.1" />
+
+  <requires>
+    <internet>always</internet>
+  </requires>
+
+  <releases>
+    <release version="2.4.0" date="2026-11-19">
+      <description>
+        <p>Primeira versão em Flatpak.</p>
+      </description>
+    </release>
+    <release version="2.3.0" date="2026-11-19">
+      <description>
+        <p>Modo claro e noturno e novo visual.</p>
+      </description>
+    </release>
+  </releases>
+</component>

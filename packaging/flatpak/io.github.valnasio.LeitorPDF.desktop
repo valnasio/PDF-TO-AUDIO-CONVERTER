@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Leitor de PDF em Áudio
+GenericName=Conversor de PDF em audiolivro
+Comment=Transforme PDFs em audiolivros com voz natural
+Exec=leitor-pdf
+Icon=io.github.valnasio.LeitorPDF
+Terminal=false
+StartupWMClass=leitor-pdf
+Categories=AudioVideo;Audio;Office;Viewer;
+Keywords=pdf;audio;audiolivro;tts;voz;leitor;

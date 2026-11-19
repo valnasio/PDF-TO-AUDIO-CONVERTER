@@ -68,14 +68,14 @@ def main() -> None:
         return False
 
     def on_decide_destination(download, suggested):
-        dialog = Gtk.FileChooserDialog(
-            title="Salvar áudio", parent=win, action=Gtk.FileChooserAction.SAVE,
-        )
-        dialog.add_buttons("Cancelar", Gtk.ResponseType.CANCEL, "Salvar", Gtk.ResponseType.ACCEPT)
+        # FileChooserNative usa o seletor de arquivos do sistema (portal), o que
+        # também funciona dentro do sandbox do Flatpak.
+        dialog = Gtk.FileChooserNative.new("Salvar áudio", win, Gtk.FileChooserAction.SAVE, "Salvar", "Cancelar")
         dialog.set_do_overwrite_confirmation(True)
         dialog.set_current_name(suggested or "audio.mp3")
-        music = os.path.expanduser("~/Música") if os.path.isdir(os.path.expanduser("~/Música")) else os.path.expanduser("~")
-        dialog.set_current_folder(music)
+        music = os.path.expanduser("~/Música")
+        if os.path.isdir(music):
+            dialog.set_current_folder(music)
         if dialog.run() == Gtk.ResponseType.ACCEPT:
             download.set_destination(dialog.get_uri())
         else:

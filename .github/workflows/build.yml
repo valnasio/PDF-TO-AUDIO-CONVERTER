@@ -1,4 +1,4 @@
-# Gera os instaladores de Windows (.exe) e Linux (.deb e .rpm).
+# Gera os instaladores de Windows (.exe) e Linux (.deb, .rpm e .flatpak).
 # - Ao enviar uma tag "v*" (ex.: v2.1.0): cria/atualiza a Release com os arquivos.
 # - Manualmente (aba Actions → "Run workflow"): só gera os arquivos para teste.
 name: Build
@@ -83,9 +83,59 @@ jobs:
             dist/leitor-pdf_amd64.deb
             dist/leitor-pdf.x86_64.rpm
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-bin
+          path: dist/LeitorPDF
+
+  flatpak:
+    needs: linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-bin
+          path: dist
+      - name: Instala o Flatpak e o runtime GNOME
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq flatpak flatpak-builder xvfb imagemagick dbus-x11
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build (.flatpak)
+        run: |
+          chmod +x dist/LeitorPDF
+          flatpak-builder --user --install-deps-from=flathub --repo=build/flatpak-repo --force-clean             build/flatpak packaging/flatpak/io.github.valnasio.LeitorPDF.yml
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo             build/flatpak-repo dist/leitor-pdf.flatpak io.github.valnasio.LeitorPDF
+          ls -lh dist/leitor-pdf.flatpak
+      - name: Teste do .flatpak (instala o arquivo, abre a janela e captura a tela)
+        run: |
+          flatpak install --user -y --noninteractive dist/leitor-pdf.flatpak
+          # a janela usa o Python + GTK + WebKitGTK do runtime: confere que existem
+          flatpak run --command=python3 io.github.valnasio.LeitorPDF -c             "import gi; gi.require_version('Gtk','3.0'); gi.require_version('WebKit2','4.1'); from gi.repository import Gtk, WebKit2; print('GTK + WebKitGTK ok')"
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1280x900x24 &
+          sleep 2
+          dbus-launch --exit-with-session flatpak run io.github.valnasio.LeitorPDF --port 8777 &
+          for i in $(seq 1 60); do curl -sf localhost:8777/api/voices >/dev/null && break; sleep 1; done
+          curl -sf localhost:8777/api/voices >/dev/null
+          sleep 10
+          pgrep -af linux_window.py
+          import -window root dist/flatpak-janela.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: dist/leitor-pdf.flatpak
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flatpak-captura
+          path: dist/flatpak-janela.png
+          if-no-files-found: ignore
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, linux]
+    needs: [windows, linux, flatpak]
     runs-on: ubuntu-latest
     steps:
       # só os instaladores (as capturas de tela do teste ficam fora da Release)
@@ -96,6 +146,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: linux
+          path: assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: flatpak
           path: assets
       - name: Publicar na Release
         env:
