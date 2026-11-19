@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leitor de PDF em Áudio · Mini (web)</title>
+  <meta name="description" content="Ouça seus PDFs em voz alta direto no navegador. Grátis, sem instalar e sem enviar seus arquivos para lugar nenhum." />
+  <link rel="icon" href="../img/icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="#/" class="brand"><img src="../img/icon.png" alt="" class="brand-img" /> <span class="brand-text">Leitor de PDF</span> <span class="tag">mini</span></a>
+    <nav>
+      <a href="#/" data-nav="upload">Abrir PDF</a>
+      <a href="#/biblioteca" data-nav="library">Biblioteca</a>
+      <a href="../" class="get-app" title="Versão completa para Windows e Linux">⬇ App completo</a>
+    </nav>
+  </header>
+
+  <main id="app"></main>
+
+  <!-- ============ ENVIO ============ -->
+  <template id="tpl-upload">
+    <section class="screen upload">
+      <h1>Ouça qualquer PDF agora mesmo</h1>
+      <p class="muted">Direto no navegador, sem instalar nada. Seu arquivo <b>não sai do seu computador</b>.</p>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file" accept="application/pdf,.pdf" hidden />
+        <div class="drop-icon">📄</div>
+        <div class="drop-title">Arraste o PDF aqui</div>
+        <div class="muted">ou <span class="link">clique para escolher</span></div>
+      </label>
+
+      <div class="processing" id="processing" hidden>
+        <div class="wave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <h3 id="proc-title"></h3>
+        <div class="bar big"><div class="fill" id="proc-fill"></div></div>
+        <p class="muted" id="proc-label">Lendo o PDF…</p>
+      </div>
+      <p class="error" id="upload-error" hidden></p>
+
+      <div class="compare">
+        <div>
+          <h3>🌐 Mini (esta página)</h3>
+          <ul>
+            <li>Lê em voz alta na hora</li>
+            <li>Usa as vozes do seu navegador</li>
+            <li>Funciona até no celular</li>
+          </ul>
+        </div>
+        <div>
+          <h3>💻 App completo</h3>
+          <ul>
+            <li>Gera o <b>MP3</b> do livro inteiro</li>
+            <li>Vozes neurais em qualquer computador</li>
+            <li>Windows e Linux</li>
+          </ul>
+          <a href="../" class="btn ghost small">Baixar o app →</a>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <!-- ============ PLAYER ============ -->
+  <template id="tpl-player">
+    <section class="screen player">
+      <div class="player-card">
+        <div class="cover" id="pl-cover"></div>
+        <div class="player-main">
+          <h2 id="pl-title"></h2>
+          <p class="muted" id="pl-meta"></p>
+
+          <div class="seek">
+            <span id="pl-pct">0%</span>
+            <input type="range" id="pl-seek" min="0" max="0" value="0" />
+            <span id="pl-left"></span>
+          </div>
+
+          <div class="controls">
+            <button class="btn icon" id="pl-prev" title="Frase anterior">⏮</button>
+            <button class="btn play" id="pl-play" title="Ouvir">▶</button>
+            <button class="btn icon" id="pl-next" title="Próxima frase">⏭</button>
+          </div>
+
+          <div class="extra">
+            <label>Voz
+              <select id="pl-voice"></select>
+            </label>
+            <label>Velocidade
+              <select id="pl-speed">
+                <option value="0.75">0.75×</option>
+                <option value="0.9">0.9×</option>
+                <option value="1" selected>1×</option>
+                <option value="1.15">1.15×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+                <option value="1.75">1.75×</option>
+                <option value="2">2×</option>
+              </select>
+            </label>
+            <label>Página
+              <select id="pl-page"></select>
+            </label>
+            <a class="btn ghost" id="pl-read">📖 Ler PDF</a>
+          </div>
+          <p class="hint" id="pl-voice-hint" hidden></p>
+        </div>
+      </div>
+
+      <div class="readalong">
+        <div class="readalong-head">
+          <h3>Acompanhe a leitura</h3>
+          <span class="muted" id="pl-curpage"></span>
+        </div>
+        <div class="readalong-text" id="pl-text"></div>
+      </div>
+    </section>
+  </template>
+
+  <!-- ============ BIBLIOTECA ============ -->
+  <template id="tpl-library">
+    <section class="screen library">
+      <div class="lib-head">
+        <h1>Biblioteca</h1>
+        <input type="search" id="lib-search" placeholder="Buscar…" />
+      </div>
+      <p class="muted small">Seus PDFs ficam guardados neste navegador, neste dispositivo.</p>
+      <div class="lib-grid" id="lib-grid"></div>
+      <div class="empty" id="lib-empty" hidden>
+        <div class="drop-icon">📚</div>
+        <p>Nenhum PDF ainda.</p>
+        <a href="#/" class="btn primary">Abrir meu primeiro PDF</a>
+      </div>
+    </section>
+  </template>
+
+  <!-- ============ LEITOR ============ -->
+  <template id="tpl-reader">
+    <section class="screen reader">
+      <div class="reader-bar">
+        <a href="#/biblioteca" class="btn ghost">← Biblioteca</a>
+        <h2 id="rd-title"></h2>
+        <a class="btn primary" id="rd-listen">🎧 Ouvir</a>
+      </div>
+      <iframe id="rd-frame" title="PDF"></iframe>
+      <p class="muted small center">Não apareceu? <a id="rd-open" target="_blank" class="link">Abrir o PDF em outra aba</a></p>
+    </section>
+  </template>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

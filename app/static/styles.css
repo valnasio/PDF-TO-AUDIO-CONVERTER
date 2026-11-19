@@ -133,3 +133,7 @@ select, input[type=search] { background: var(--bg2); color: var(--text); border:
   .lib-head { flex-direction: column; align-items: stretch; }
   .lib-head input { width: 100%; }
 }
+
+/* Leitor de PDF por imagens (janelas sem visualizador de PDF, ex.: Linux) */
+.pdf-pages { flex: 1; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 14px; background: #1a1d26; border: 1px solid var(--line); border-radius: 14px; }
+.pdf-pages img { width: 100%; max-width: 900px; min-height: 300px; background: #fff; border-radius: 4px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }

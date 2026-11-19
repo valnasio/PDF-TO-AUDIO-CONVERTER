@@ -414,8 +414,26 @@ function renderReader(id) {
     const listen = $("#rd-listen", root);
     if (d.status === "ready") listen.href = `#/ouvir/${id}`;
     else { listen.href = `#/convertendo/${id}`; listen.textContent = "⏳ Conversão"; }
-    $("#rd-frame", root).src = `/api/documents/${id}/pdf`;
+    const frame = $("#rd-frame", root);
+    if (navigator.pdfViewerEnabled) {
+      frame.src = `/api/documents/${id}/pdf`; // Windows (WebView2): visualizador nativo
+      return;
+    }
+    // Janela sem visualizador de PDF (WebKitGTK no Linux): páginas desenhadas pelo servidor.
+    const pages = document.createElement("div");
+    pages.className = "pdf-pages";
+    frame.replaceWith(pages);
+    const w = Math.round(Math.min(1100, pages.clientWidth || 900) * (window.devicePixelRatio || 1));
+    api(`/api/documents/${id}/pages`).then(({ count }) => {
+      pages.innerHTML = Array.from({ length: count }, (_, i) =>
+        `<img loading="lazy" decoding="async" alt="Página ${i + 1}" src="/api/documents/${id}/page/${i + 1}?w=${w}" />`
+      ).join("");
+    });
   }).catch(() => (location.hash = "#/biblioteca"));
 }
+
+// Sinal de vida: no Linux o programa roda no navegador e se encerra sozinho
+// quando nenhuma aba estiver aberta (e não houver conversão em andamento).
+setInterval(() => fetch("/api/ping").catch(() => {}), 20000);
 
 router();

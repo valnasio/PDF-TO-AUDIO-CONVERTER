@@ -52,6 +52,30 @@
     h2 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); margin: 0 0 12px; text-align: center; letter-spacing: -.01em; }
     .sub { text-align: center; color: var(--muted); max-width: 640px; margin: 0 auto 48px; }
 
+
+    /* versões */
+    .alt { margin-top: 10px; font-size: .92rem; color: var(--muted); }
+    .alt a { color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+    .versions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .version { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px 26px; display: flex; flex-direction: column; transition: transform .2s, border-color .2s; }
+    .version:hover { transform: translateY(-3px); border-color: #3d3a6e; }
+    .version.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset, 0 20px 50px rgba(124,108,255,.18); }
+    .version.current::before { content: "Seu sistema"; position: absolute; top: -12px; right: 20px; font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: var(--accent); }
+    .version.web { background: linear-gradient(180deg, #16302c, var(--card)); }
+    .v-ico { font-size: 2rem; margin-bottom: 6px; }
+    .version h3 { margin: 0; font-size: 1.3rem; }
+    .v-req { color: var(--muted); font-size: .88rem; margin: 4px 0 14px; }
+    .version ul { margin: 0 0 22px; padding: 0; list-style: none; flex: 1; }
+    .version li { padding: 6px 0 6px 24px; position: relative; color: #c9ccd8; font-size: .95rem; }
+    .version li::before { content: "✓"; position: absolute; left: 0; color: var(--accent2); font-weight: 700; }
+    .btn-dl { display: block; text-align: center; padding: 13px; border-radius: 12px; text-decoration: none; font-weight: 700; background: var(--accent); color: #fff; transition: filter .15s; }
+    .btn-dl:hover { filter: brightness(1.12); }
+    .dl-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .version.web .btn-dl { background: var(--accent2); color: #0b1f1c; }
+    .v-howto { font-size: .8rem; color: var(--muted); margin: 12px 0 0; text-align: center; }
+    code { background: #262a38; padding: 1px 6px; border-radius: 6px; font-size: .88em; }
+    @media (max-width: 900px) { .versions { grid-template-columns: 1fr; max-width: 520px; margin: 0 auto; } }
+
     /* recursos */
     .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
     @media (max-width: 900px) { .features { grid-template-columns: repeat(2, 1fr); } }
@@ -116,6 +140,7 @@
     <div class="wrap">
       <a href="#" class="brand"><img src="img/icon.png" alt="" /> Leitor de PDF em Áudio</a>
       <div class="links">
+        <a href="#versoes">Versões</a>
         <a href="#recursos">Recursos</a>
         <a href="#telas">Telas</a>
         <a href="#historia">História</a>
@@ -130,11 +155,12 @@
       <img class="logo" src="img/icon.png" alt="Ícone do Leitor de PDF em Áudio" />
       <h1>Seus PDFs viram<br /><span class="grad">audiolivros</span> com voz natural</h1>
       <p class="lead">Arraste um PDF, escolha a voz e ouça. Funciona com livros inteiros, sem palavras cortadas e sem precisar instalar nada.</p>
-      <a class="download js-download" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">
+      <a class="download js-primary" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-        <span>Baixar para Windows<small class="js-version">LeitorPDF.exe</small></span>
+        <span><span class="js-primary-label">Baixar para Windows</span><small class="js-primary-sub">LeitorPDF.exe</small></span>
       </a>
-      <div class="meta"><span>Windows 10 e 11</span><span class="js-size">~36 MB</span><span>Grátis</span></div>
+      <div class="meta"><span class="js-primary-req">Windows 10 e 11</span><span class="js-primary-size">~36 MB</span><span>Grátis</span></div>
+      <div class="alt">Outras opções: <a href="#versoes" class="js-alt-os">Linux</a> · <a href="app/">🌐 Usar no navegador, sem baixar</a></div>
 
       <div class="screenshot">
         <div class="chrome"><i></i><i></i><i></i></div>
@@ -143,7 +169,54 @@
     </div>
   </header>
 
-  <section id="recursos">
+  <section id="versoes">
+    <div class="wrap">
+      <h2>Escolha sua <span class="grad">versão</span></h2>
+      <p class="sub">O mesmo leitor, do jeito que for melhor para você.</p>
+      <div class="versions">
+        <div class="version" data-os="windows">
+          <div class="v-ico">🪟</div>
+          <h3>Windows</h3>
+          <p class="v-req">Windows 10 e 11 · <span class="js-size-win">~36 MB</span></p>
+          <ul>
+            <li>Gera o <b>MP3</b> do livro inteiro</li>
+            <li>Vozes neurais naturais</li>
+            <li>Abre em janela própria, sem instalar</li>
+          </ul>
+          <a class="btn-dl js-win" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">⬇ Baixar .exe</a>
+        </div>
+        <div class="version" data-os="linux">
+          <div class="v-ico">🐧</div>
+          <h3>Linux</h3>
+          <p class="v-req">Ubuntu, Debian, Mint, Fedora (x86_64) · <span class="js-size-linux">~45 MB</span></p>
+          <ul>
+            <li>Os mesmos recursos da versão Windows</li>
+            <li>Janela própria, com ícone no menu</li>
+            <li>Instala com dois cliques</li>
+          </ul>
+          <div class="dl-pair">
+            <a class="btn-dl" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb" title="Ubuntu, Debian, Mint, Pop!_OS">⬇ .deb</a>
+            <a class="btn-dl" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm" title="Fedora">⬇ .rpm</a>
+          </div>
+          <p class="v-howto"><b>.deb</b>: Ubuntu, Debian, Mint, Pop!_OS · <b>.rpm</b>: Fedora</p>
+        </div>
+        <div class="version web">
+          <div class="v-ico">🌐</div>
+          <h3>Mini (web)</h3>
+          <p class="v-req">Qualquer navegador moderno, até no celular</p>
+          <ul>
+            <li>Lê o PDF em voz alta <b>na hora</b></li>
+            <li>Nada para baixar ou instalar</li>
+            <li>O PDF nunca sai do seu aparelho</li>
+          </ul>
+          <a class="btn-dl" href="app/">▶ Abrir agora</a>
+          <p class="v-howto">Usa as vozes do navegador (no Edge, as mesmas vozes naturais). Não gera MP3.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="recursos" style="background: var(--bg2);">
     <div class="wrap">
       <h2>Feito para <span class="grad">ouvir de verdade</span></h2>
       <p class="sub">Tudo o que faltava para transformar um PDF num audiolivro agradável de ouvir.</p>
@@ -158,7 +231,7 @@
     </div>
   </section>
 
-  <section id="telas" style="background: var(--bg2);">
+  <section id="telas">
     <div class="wrap">
       <h2>Conheça as telas</h2>
       <p class="sub">Do envio do PDF à sua biblioteca de audiolivros.</p>
@@ -178,19 +251,19 @@
     </div>
   </section>
 
-  <section id="como">
+  <section id="como" style="background: var(--bg2);">
     <div class="wrap">
       <h2>Comece em 3 passos</h2>
       <p class="sub">Em menos de um minuto você já está ouvindo.</p>
       <div class="steps">
-        <div class="step"><h3>Baixe</h3><p>Clique em <b>Baixar para Windows</b> e salve o <code>LeitorPDF.exe</code> onde preferir.</p></div>
-        <div class="step"><h3>Abra</h3><p>Dê dois cliques no arquivo. O programa abre numa janela própria, sem instalação.</p></div>
+        <div class="step"><h3>Baixe</h3><p>Escolha a versão para <b>Windows</b> ou <b>Linux</b>, ou use a <a href="app/" style="color:var(--accent2)">versão web</a> sem baixar nada.</p></div>
+        <div class="step"><h3>Abra</h3><p>Dê dois cliques no arquivo. Não precisa instalar nada.</p></div>
         <div class="step"><h3>Ouça</h3><p>Arraste o PDF, escolha a voz e clique em <b>Converter em áudio</b>. Pronto!</p></div>
       </div>
     </div>
   </section>
 
-  <section id="historia" style="background: var(--bg2);">
+  <section id="historia">
     <div class="wrap">
       <h2>Do script ao aplicativo</h2>
       <p class="story-text">O projeto começou há cerca de 4 anos como um script simples, feito à mão e inspirado por um vídeo do canal Hashtag Programação. Ele funcionava, mas travou num problema que eu não consegui resolver na época: <b>PDFs grandes</b>. Com a chegada das ferramentas de IA, voltei a ele para destravar o que tinha ficado pendente.</p>
@@ -221,17 +294,19 @@
     </div>
   </section>
 
-  <section id="faq">
+  <section id="faq" style="background: var(--bg2);">
     <div class="wrap">
       <h2>Dúvidas frequentes</h2>
       <p class="sub">&nbsp;</p>
       <div class="faq">
+        <details><summary>Qual a diferença entre o app e a versão web (mini)?</summary><p>O app (Windows/Linux) gera um <b>MP3</b> do livro inteiro com vozes neurais, que você pode ouvir offline e levar para o celular. A versão web lê o PDF em voz alta na hora, direto no navegador, usando as vozes que o navegador oferece. No Microsoft Edge essas vozes são as mesmas vozes naturais. Ela não gera MP3.</p></details>
+        <details><summary>Como instalo no Linux?</summary><p>Baixe o <code>.deb</code> (Ubuntu, Debian, Mint, Pop!_OS) ou o <code>.rpm</code> (Fedora) e abra com dois cliques. A Central de Programas instala tudo, inclusive os componentes da janela. Pelo terminal: <code>sudo apt install ./leitor-pdf_amd64.deb</code> ou <code>sudo dnf install ./leitor-pdf.x86_64.rpm</code>. Depois é só procurar "Leitor de PDF em Áudio" no menu.</p></details>
         <details><summary>O Windows mostrou "O Windows protegeu o computador". É seguro?</summary><p>Sim. Esse aviso aparece em programas que não têm assinatura digital paga. Clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>. O código-fonte completo está aberto no GitHub.</p></details>
         <details><summary>Precisa de internet?</summary><p>Somente durante a conversão, porque as vozes neurais são geradas online. Depois de pronto, o áudio pode ser ouvido sem internet.</p></details>
         <details><summary>Quanto tempo demora para converter?</summary><p>Cerca de 1 minuto para cada 15 a 20 minutos de áudio. Um livro de 70 páginas fica pronto em poucos minutos. Você pode continuar usando o programa enquanto isso.</p></details>
         <details><summary>Tem limite de páginas?</summary><p>Não. O programa foi feito justamente para PDFs grandes: testamos documentos com mais de 2.000 páginas.</p></details>
         <details><summary>Funciona com PDF escaneado?</summary><p>Ainda não. O PDF precisa ter texto selecionável. Documentos que são apenas imagens exigiriam reconhecimento de texto (OCR).</p></details>
-        <details><summary>Onde ficam meus arquivos?</summary><p>Na pasta <code>%LOCALAPPDATA%\LeitorPDF</code>. Você também pode baixar o MP3 de cada livro direto pelo player.</p></details>
+        <details><summary>Onde ficam meus arquivos?</summary><p>No Windows, em <code>%LOCALAPPDATA%\LeitorPDF</code>; no Linux, em <code>~/.local/share/LeitorPDF</code>; na versão web, no próprio navegador. Você também pode baixar o MP3 de cada livro direto pelo player.</p></details>
       </div>
     </div>
   </section>
@@ -240,10 +315,11 @@
     <div class="cta">
       <h2>Pronto para ouvir seus PDFs?</h2>
       <p class="sub" style="margin-bottom: 30px;">Grátis, leve e sem instalação.</p>
-      <a class="download js-download" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">
+      <a class="download js-primary" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-        <span>Baixar para Windows<small class="js-version">LeitorPDF.exe</small></span>
+        <span><span class="js-primary-label">Baixar para Windows</span><small class="js-primary-sub">LeitorPDF.exe</small></span>
       </a>
+      <div class="alt">ou <a href="app/">use agora no navegador</a> · <a href="#versoes">todas as versões</a></div>
     </div>
   </div>
 
@@ -265,15 +341,42 @@
       document.getElementById("caption").textContent = shots[i].dataset.caption;
     }));
 
-    // Versão e tamanho reais a partir da última release do GitHub
+    // Botão principal conforme o sistema do visitante
+    const REL = "https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/";
+    const ua = navigator.userAgent;
+    const mobile = /Android|iPhone|iPad|iPod/i.test(ua);
+    const os = mobile ? "mobile" : /Linux|X11/i.test(ua) ? "linux" : "windows";
+    const PRIMARY = {
+      windows: { label: "Baixar para Windows", sub: "LeitorPDF.exe", req: "Windows 10 e 11", size: "~36 MB", href: REL + "LeitorPDF.exe", alt: ["Linux", "#versoes"] },
+      linux: /fedora|red hat/i.test(ua)
+        ? { label: "Baixar para Linux", sub: "leitor-pdf.x86_64.rpm (Fedora)", req: "Fedora (x86_64)", size: "~45 MB", href: REL + "leitor-pdf.x86_64.rpm", alt: [".deb (Ubuntu/Debian)", REL + "leitor-pdf_amd64.deb"] }
+        : { label: "Baixar para Linux", sub: "leitor-pdf_amd64.deb (Ubuntu/Debian)", req: "Ubuntu, Debian, Mint (x86_64)", size: "~45 MB", href: REL + "leitor-pdf_amd64.deb", alt: [".rpm (Fedora)", REL + "leitor-pdf.x86_64.rpm"] },
+      mobile: { label: "Usar no navegador", sub: "versão mini, sem baixar", req: "Funciona no celular", size: "0 MB", href: "app/", alt: ["Windows e Linux", "#versoes"] },
+    }[os];
+    document.querySelectorAll(".js-primary").forEach((a) => (a.href = PRIMARY.href));
+    document.querySelectorAll(".js-primary-label").forEach((s) => (s.textContent = PRIMARY.label));
+    document.querySelectorAll(".js-primary-sub").forEach((s) => (s.textContent = PRIMARY.sub));
+    document.querySelector(".js-primary-req").textContent = PRIMARY.req;
+    document.querySelector(".js-primary-size").textContent = PRIMARY.size;
+    const altOs = document.querySelector(".js-alt-os");
+    altOs.textContent = PRIMARY.alt[0]; altOs.href = PRIMARY.alt[1];
+    document.querySelector(`.version[data-os="${os}"]`)?.classList.add("current");
+
+    // Versão e tamanhos reais a partir da última release do GitHub
     fetch("https://api.github.com/repos/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((rel) => {
-        const asset = (rel.assets || []).find((a) => a.name.toLowerCase().endsWith(".exe"));
-        if (!asset) return;
-        document.querySelectorAll(".js-download").forEach((a) => (a.href = asset.browser_download_url));
-        document.querySelectorAll(".js-version").forEach((s) => (s.textContent = `Versão ${rel.tag_name} · ${asset.name}`));
-        document.querySelector(".js-size").textContent = `${(asset.size / 1048576).toFixed(0)} MB`;
+        const mb = (a) => `${Math.round(a.size / 1048576)} MB`;
+        const win = (rel.assets || []).find((a) => a.name.toLowerCase().endsWith(".exe"));
+        const lin = (rel.assets || []).find((a) => a.name.toLowerCase().endsWith(".deb"));
+        if (win) document.querySelector(".js-size-win").textContent = mb(win);
+        if (lin) document.querySelector(".js-size-linux").textContent = mb(lin);
+        const rpm = (rel.assets || []).find((a) => a.name.toLowerCase().endsWith(".rpm"));
+        const cur = os === "windows" ? win : os === "linux" ? (/fedora|red hat/i.test(ua) ? rpm : lin) : null;
+        if (cur) {
+          document.querySelectorAll(".js-primary-sub").forEach((s) => (s.textContent = `Versão ${rel.tag_name} · ${cur.name}`));
+          document.querySelector(".js-primary-size").textContent = mb(cur);
+        }
       })
       .catch(() => {});
   </script>

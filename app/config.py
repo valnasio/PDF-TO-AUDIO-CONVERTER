@@ -7,8 +7,13 @@ FROZEN = getattr(sys, "frozen", False)  # True quando roda como executável (PyI
 if FROZEN:
     # Arquivos embutidos no .exe são extraídos para sys._MEIPASS.
     STATIC_DIR = Path(sys._MEIPASS) / "app" / "static"
-    # Dados do usuário ficam em %LOCALAPPDATA%\LeitorPDF (gravável e persistente).
-    _default_data = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "LeitorPDF"
+    # Dados do usuário ficam numa pasta gravável e persistente:
+    #   Windows: %LOCALAPPDATA%\LeitorPDF     Linux: ~/.local/share/LeitorPDF
+    if sys.platform == "win32":
+        _base = Path(os.environ.get("LOCALAPPDATA", Path.home()))
+    else:
+        _base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    _default_data = _base / "LeitorPDF"
 else:
     STATIC_DIR = Path(__file__).resolve().parent / "static"
     _default_data = Path(__file__).resolve().parent.parent / "data"

@@ -1,7 +1,11 @@
 """Leitor de PDF em Áudio — aplicativo desktop.
 
-Sobe o servidor internamente e abre a interface numa janela própria
-(WebView2, já presente no Windows 10/11). Fechar a janela encerra o programa.
+Sobe o servidor internamente e abre a interface:
+- Windows: numa janela própria (WebView2, já presente no Windows 10/11).
+  Fechar a janela encerra o programa.
+- Linux: numa janela GTK/WebKitGTK (dependências instaladas pelo .deb/.rpm).
+  Sem GTK/WebKit, abre no navegador padrão e se encerra sozinho quando a aba
+  é fechada e não há conversão em andamento.
 
 Uso:
     python main.py              # janela do aplicativo
@@ -13,8 +17,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import socket
+import subprocess
 import sys
+from pathlib import Path
 import threading
 import time
 import urllib.request
@@ -107,6 +114,74 @@ def open_window(url: str) -> bool:
         return False
 
 
+IDLE_EXIT_SECONDS = 90
+
+
+def _system_env() -> dict:
+    """Ambiente para programas do sistema (navegador, Python do sistema).
+
+    O PyInstaller altera LD_LIBRARY_PATH; sem restaurar, programas externos
+    carregam as bibliotecas embutidas no executável e falham ao abrir."""
+    env = dict(os.environ)
+    if getattr(sys, "frozen", False) and sys.platform.startswith("linux"):
+        orig = env.pop("LD_LIBRARY_PATH_ORIG", None)
+        if orig is not None:
+            env["LD_LIBRARY_PATH"] = orig
+        else:
+            env.pop("LD_LIBRARY_PATH", None)
+    return env
+
+
+def _resource(*parts: str) -> Path:
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return base.joinpath(*parts)
+
+
+def open_linux_window(url: str) -> bool:
+    """Abre a janela GTK usando o Python do sistema. Retorna False se o
+    GTK/WebKitGTK não estiver instalado (aí usamos o navegador)."""
+    python = shutil.which("python3", path="/usr/bin:/bin:/usr/local/bin") or shutil.which("python3")
+    helper = _resource("app", "linux_window.py")
+    if not python or not helper.exists():
+        return False
+    icon = _resource("assets", "icon.png")
+    started = time.monotonic()
+    try:
+        proc = subprocess.Popen([python, str(helper), url, APP_NAME, str(icon)], env=_system_env())
+        code = proc.wait()
+    except Exception:
+        return False
+    # 3 = GTK/WebKit ausente; falha imediata = sem tela gráfica, etc.
+    return not (code == 3 or (code != 0 and time.monotonic() - started < 5))
+
+
+def open_browser(url: str) -> None:
+    os.environ.clear()
+    os.environ.update(_system_env())
+    print(f"{APP_NAME} rodando em {url}  (Ctrl+C para encerrar)", flush=True)
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+
+def wait_until_idle(url: str, auto_exit: bool) -> None:
+    """Mantém o servidor vivo. Com auto_exit, encerra quando nenhuma aba do
+    navegador estiver aberta há um tempo e não houver conversão em andamento."""
+    from app import main as app_main
+
+    try:
+        while True:
+            time.sleep(5)
+            if not auto_exit:
+                continue
+            idle = time.monotonic() - app_main.last_activity
+            if idle > IDLE_EXIT_SECONDS and not _active_conversions(url):
+                return
+    except KeyboardInterrupt:
+        pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=APP_NAME)
     parser.add_argument("--host", default="127.0.0.1")
@@ -129,15 +204,22 @@ def main() -> None:
     else:
         server = start_server(args.host, args.port)
 
-    if args.browser or not open_window(url):
-        webbrowser.open(url)
+    # Janela nativa: WebView2 no Windows, GTK/WebKitGTK no Linux.
+    if args.browser:
+        opened = False
+    elif sys.platform == "win32":
+        opened = open_window(url)
+    elif sys.platform.startswith("linux"):
+        opened = open_linux_window(url)
+    else:
+        opened = False
+    if not opened:
+        open_browser(url)
         if server is None:
             return
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            pass
+        # Modo navegador "de usuário" (não o --browser de desenvolvimento):
+        # encerra sozinho quando a aba for fechada.
+        wait_until_idle(url, auto_exit=not args.browser)
 
     if server is not None:
         server.should_exit = True

@@ -9,14 +9,18 @@
 
 <br />
 
-<a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">
-  <img src="https://img.shields.io/badge/⬇%20%20Baixar%20para%20Windows-LeitorPDF.exe-7c6cff?style=for-the-badge&labelColor=36c5b0" alt="Baixar para Windows" height="48" />
-</a>
+<a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe"><img src="https://img.shields.io/badge/⬇%20Windows-.exe%20·%2036%20MB-7c6cff?style=for-the-badge&labelColor=5d4dff" alt="Baixar para Windows" height="42" /></a>
+&nbsp;
+<a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb"><img src="https://img.shields.io/badge/⬇%20Linux-.deb-7c6cff?style=for-the-badge&labelColor=5d4dff" alt="Baixar .deb" height="42" /></a>
+&nbsp;
+<a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm"><img src="https://img.shields.io/badge/⬇%20Linux-.rpm-7c6cff?style=for-the-badge&labelColor=5d4dff" alt="Baixar .rpm" height="42" /></a>
+&nbsp;
+<a href="https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/"><img src="https://img.shields.io/badge/▶%20Usar%20online-versão%20mini-36c5b0?style=for-the-badge&labelColor=1f8f7f" alt="Usar online" height="42" /></a>
 
 <br />
 <br />
 
-<sub>Windows 10 e 11 · arquivo único de ~36 MB · não precisa instalar nada</sub>
+<sub>Não precisa instalar nada · <a href="https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/">Página do projeto</a></sub>
 
 <br />
 <br />
@@ -82,6 +86,18 @@ O projeto ficou parado nesse ponto. Com a chegada das ferramentas de IA, voltei 
 
 ## 🚀 Como usar
 
+Escolha a versão que preferir:
+
+| | 🪟 Windows | 🐧 Linux | 🌐 Mini (web) |
+|---|---|---|---|
+| **Download** | [`LeitorPDF.exe`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe) (~36 MB) | [`.deb`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb) · [`.rpm`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm) (~45 MB) | [Abrir no navegador](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/) |
+| **Gera MP3** | ✅ | ✅ | ❌ lê em voz alta na hora |
+| **Vozes** | Neurais (Francisca, Antônio, Thalita…) | Neurais | As do navegador (no Edge, as mesmas vozes naturais) |
+| **Interface** | Janela própria | Janela própria | Navegador, inclusive no celular |
+| **Seus PDFs ficam** | No computador | No computador | No navegador (nada é enviado) |
+
+### 🪟 Windows
+
 1. **[Baixe o `LeitorPDF.exe`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe)**.
 2. Dê dois cliques. O programa abre em uma janela própria.
 3. Arraste um PDF, escolha a voz e clique em **Converter em áudio**.
@@ -89,8 +105,30 @@ O projeto ficou parado nesse ponto. Com a chegada das ferramentas de IA, voltei 
 > [!NOTE]
 > Na primeira execução, o Windows pode exibir **"O Windows protegeu o computador"**. Clique em **Mais informações → Executar assim mesmo**. Isso acontece com programas que não têm assinatura digital paga.
 
-- É preciso estar **conectado à internet durante a conversão**, porque as vozes são geradas online. Depois de convertido, o áudio pode ser ouvido sem internet.
-- A biblioteca fica salva em `%LOCALAPPDATA%\LeitorPDF`.
+### 🐧 Linux
+
+Baixe o pacote do seu sistema e abra com dois cliques (a Central de Programas instala tudo):
+
+- **Ubuntu, Debian, Mint, Pop!_OS:** [`leitor-pdf_amd64.deb`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb)
+- **Fedora:** [`leitor-pdf.x86_64.rpm`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm)
+
+Ou pelo terminal:
+
+```bash
+sudo apt install ./leitor-pdf_amd64.deb      # Ubuntu / Debian
+sudo dnf install ./leitor-pdf.x86_64.rpm     # Fedora
+```
+
+Depois procure **"Leitor de PDF em Áudio"** no menu de aplicativos. O programa abre em janela própria (GTK + WebKitGTK, instalados automaticamente como dependências).
+
+### 🌐 Mini (web)
+
+Abra **[valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/)**, arraste o PDF e clique em ▶. O texto é lido no próprio navegador e o PDF nunca sai do seu aparelho. Para ter as vozes naturais, use o **Microsoft Edge**.
+
+### Bom saber
+
+- Nas versões Windows e Linux, é preciso estar **conectado à internet durante a conversão**, porque as vozes são geradas online. Depois de convertido, o áudio pode ser ouvido sem internet.
+- A biblioteca fica em `%LOCALAPPDATA%\LeitorPDF` (Windows) ou `~/.local/share/LeitorPDF` (Linux).
 - Se o programa for fechado durante uma conversão, ela continua de onde parou na próxima vez que for aberto.
 
 ## 🧠 Como garantimos a qualidade
@@ -119,29 +157,36 @@ Opções: `--port 9000`, `--host 0.0.0.0 --browser` (acesso pela rede).
 
 Variáveis de ambiente opcionais:
 
-- `PDF_AUDIO_DATA`: pasta da biblioteca (padrão: `./data`; no executável, `%LOCALAPPDATA%\LeitorPDF`)
+- `PDF_AUDIO_DATA`: pasta da biblioteca (padrão: `./data`; no executável, `%LOCALAPPDATA%\LeitorPDF` ou `~/.local/share/LeitorPDF`)
 - `TTS_CONCURRENCY`: trechos sintetizados em paralelo (padrão: 6)
 
-### Gerar o executável
+### Gerar os executáveis
 
-```powershell
-.\build.ps1      # cria dist\LeitorPDF.exe
+```bash
+.\build.ps1      # Windows: cria dist\LeitorPDF.exe
+./build.sh       # Linux:   cria dist/leitor-pdf_amd64.deb e dist/leitor-pdf.x86_64.rpm
 ```
+
+Ao publicar uma tag `v*` (ex.: `git tag v2.1.0 && git push origin v2.1.0`), o GitHub Actions gera o `.exe`, o `.deb` e o `.rpm`, testa a instalação no Ubuntu e no Fedora e anexa tudo à Release automaticamente.
 
 ### Estrutura
 
 ```
-main.py              # abre o aplicativo (janela + servidor interno)
-LeitorPDF.spec       # receita do executável (PyInstaller)
-build.ps1            # gera dist\LeitorPDF.exe
+main.py              # abre o aplicativo (janela WebView2 no Windows, GTK no Linux)
+LeitorPDF.spec       # receita dos executáveis (PyInstaller)
+build.ps1 / build.sh # geram os executáveis de Windows / Linux
+packaging/linux/     # receita dos pacotes .deb/.rpm (nfpm) e atalho do menu
+.github/workflows/   # build automático das releases
 app/
   main.py            # API (FastAPI)
   pdf_text.py        # extração, limpeza e divisão do texto
   tts.py             # síntese de voz com validação e novas tentativas
   worker.py          # fila de conversão (retomável)
   db.py              # biblioteca (SQLite)
+  linux_window.py    # janela GTK/WebKitGTK do Linux
   static/            # interface (HTML/CSS/JS)
 docs/                # página de download (GitHub Pages) e imagens
+  app/               # versão mini (web): pdf.js + vozes do navegador
 ```
 
 ## ⚠️ Limitações

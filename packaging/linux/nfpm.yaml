@@ -1,0 +1,51 @@
+# Receita dos pacotes .deb e .rpm (https://nfpm.goreleaser.com). Use: ./build.sh
+name: leitor-pdf
+arch: amd64
+platform: linux
+version: ${VERSION}
+section: sound
+priority: optional
+maintainer: valnasio <valnasio@users.noreply.github.com>
+homepage: https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/
+description: |
+  Leitor de PDF em Áudio: transforma PDFs em audiolivros com voz natural.
+  Vozes neurais em português, livros com milhares de páginas, sem palavras
+  cortadas, biblioteca com player e leitura acompanhada.
+
+contents:
+  - src: dist/LeitorPDF
+    dst: /opt/leitor-pdf/LeitorPDF
+    file_info:
+      mode: 0755
+  - src: /opt/leitor-pdf/LeitorPDF
+    dst: /usr/bin/leitor-pdf
+    type: symlink
+  - src: packaging/linux/leitor-pdf.desktop
+    dst: /usr/share/applications/leitor-pdf.desktop
+  - src: assets/icon.png
+    dst: /usr/share/icons/hicolor/256x256/apps/leitor-pdf.png
+
+scripts:
+  postinstall: packaging/linux/postinstall.sh
+  postremove: packaging/linux/postinstall.sh
+
+# A janela usa GTK 3 + WebKitGTK do sistema (o mesmo motor do navegador do
+# GNOME), instalados automaticamente como dependências.
+overrides:
+  deb:
+    depends:
+      - python3
+      - python3-gi
+      - gir1.2-gtk-3.0
+      - gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
+    recommends:
+      - gstreamer1.0-plugins-good
+      - gstreamer1.0-libav
+  rpm:
+    depends:
+      - python3
+      - python3-gobject
+      - gtk3
+      - webkit2gtk4.1
+    recommends:
+      - gstreamer1-plugins-good

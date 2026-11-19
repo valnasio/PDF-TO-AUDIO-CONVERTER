@@ -5,6 +5,7 @@ import json
 import logging
 import shutil
 import sys
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -36,6 +37,22 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="PDF em Áudio", lifespan=lifespan)
 _sample_cache: dict[str, bytes] = {}
+
+# Momento da última requisição vinda da interface. No modo navegador (Linux),
+# o lançador usa isso para encerrar o programa quando a aba é fechada.
+last_activity = time.monotonic()
+
+
+@app.middleware("http")
+async def _track_activity(request, call_next):
+    global last_activity
+    last_activity = time.monotonic()
+    return await call_next(request)
+
+
+@app.get("/api/ping")
+def ping():
+    return {"ok": True}
 
 
 def _public(doc: dict) -> dict:
@@ -146,6 +163,38 @@ def pdf(doc_id: str):
         doc_dir(doc_id) / "source.pdf", media_type="application/pdf",
         filename=doc["filename"], content_disposition_type="inline",
     )
+
+
+def _page_count(doc_id: str) -> int:
+    import pymupdf
+
+    with pymupdf.open(doc_dir(doc_id) / "source.pdf") as pdf_doc:
+        return pdf_doc.page_count
+
+
+@app.get("/api/documents/{doc_id}/pages")
+async def pages_info(doc_id: str):
+    """Usado pelo leitor quando a janela não tem visualizador de PDF (Linux)."""
+    _require(doc_id)
+    return {"count": await asyncio.to_thread(_page_count, doc_id)}
+
+
+def _render_page(doc_id: str, number: int, width: int) -> bytes:
+    import pymupdf
+
+    with pymupdf.open(doc_dir(doc_id) / "source.pdf") as pdf_doc:
+        if not 1 <= number <= pdf_doc.page_count:
+            raise HTTPException(404, "Página inexistente")
+        page = pdf_doc[number - 1]
+        zoom = width / (page.rect.width or 1)
+        return page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False).tobytes("png")
+
+
+@app.get("/api/documents/{doc_id}/page/{number}")
+async def page_image(doc_id: str, number: int, w: int = 1100):
+    _require(doc_id)
+    png = await asyncio.to_thread(_render_page, doc_id, number, max(300, min(w, 2400)))
+    return Response(png, media_type="image/png", headers={"Cache-Control": "max-age=86400"})
 
 
 @app.get("/api/documents/{doc_id}/timeline")

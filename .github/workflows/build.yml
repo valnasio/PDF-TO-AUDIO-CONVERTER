@@ -1,0 +1,87 @@
+# Gera os instaladores de Windows (.exe) e Linux (.deb e .rpm).
+# - Ao enviar uma tag "v*" (ex.: v2.1.0): cria/atualiza a Release com os arquivos.
+# - Manualmente (aba Actions → "Run workflow"): só gera os arquivos para teste.
+name: Build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build
+        shell: pwsh
+        run: ./build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/LeitorPDF.exe
+
+  linux:
+    # Ubuntu 22.04 (glibc 2.35): o executável roda também em distros mais antigas.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build (.deb e .rpm)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [[ "$VERSION" =~ ^[0-9] ]] || VERSION="0.0.0~dev${GITHUB_RUN_NUMBER}"
+          VERSION="$VERSION" bash build.sh
+
+      - name: Teste do .deb (instala dependências e abre a janela)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ./dist/leitor-pdf_amd64.deb xvfb
+          export PDF_AUDIO_DATA=/tmp/lt
+          xvfb-run -a leitor-pdf --port 8777 &
+          for i in $(seq 1 40); do curl -sf localhost:8777/api/voices >/dev/null && break; sleep 1; done
+          curl -sf localhost:8777/api/voices >/dev/null
+          sleep 5
+          # a janela GTK (linux_window.py) precisa estar aberta
+          pgrep -af linux_window.py
+          desktop-file-validate /usr/share/applications/leitor-pdf.desktop
+
+      - name: Teste do .rpm (instalação no Fedora resolve as dependências)
+        run: |
+          docker run --rm -v "$PWD/dist:/d" fedora:latest \
+            bash -c "dnf install -y -q /d/leitor-pdf.x86_64.rpm && test -x /usr/bin/leitor-pdf && python3 -c \"import gi; gi.require_version('WebKit2','4.1'); from gi.repository import WebKit2; print('WebKitGTK ok')\""
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            dist/leitor-pdf_amd64.deb
+            dist/leitor-pdf.x86_64.rpm
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Publicar na Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "Leitor de PDF em Áudio $TAG" --generate-notes
+          gh release upload "$TAG" assets/* -R "$GITHUB_REPOSITORY" --clobber
