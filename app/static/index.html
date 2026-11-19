@@ -115,8 +115,10 @@
               <select id="pl-page"></select>
             </label>
             <a class="btn ghost" id="pl-read">📖 Ler PDF</a>
-            <a class="btn ghost" id="pl-download">⬇ Baixar MP3</a>
+            <a class="btn ghost" id="pl-files">📁 Áudios por página</a>
+            <a class="btn ghost" id="pl-download">⬇ Livro completo</a>
           </div>
+          <p class="report" id="pl-report" hidden></p>
         </div>
       </div>
 
@@ -142,6 +144,28 @@
         <div class="drop-icon">📚</div>
         <p>Nenhum arquivo ainda.</p>
         <a href="#/" class="btn primary">Converter meu primeiro PDF</a>
+      </div>
+    </section>
+  </template>
+
+  <!-- ============ TELA: ARQUIVOS (árvore de áudios por página) ============ -->
+  <template id="tpl-files">
+    <section class="screen files">
+      <div class="files-head">
+        <a href="#/biblioteca" class="btn ghost">← Biblioteca</a>
+        <div class="files-actions">
+          <a class="btn" id="fl-listen">🎧 Ouvir livro completo</a>
+          <button class="btn" id="fl-open" hidden>📂 Abrir pasta</button>
+          <a class="btn primary" id="fl-zip">⬇ Baixar pasta (.zip)</a>
+        </div>
+      </div>
+      <h1 id="fl-title"></h1>
+      <p class="report" id="fl-report"></p>
+      <input type="search" id="fl-search" placeholder="Filtrar por página ou nome…" />
+      <div class="tree" id="fl-tree"></div>
+      <div class="mini-player" id="fl-player" hidden>
+        <div class="mp-info"><span class="mp-icon">🎵</span><span id="fl-now"></span></div>
+        <audio id="fl-audio" controls preload="none"></audio>
       </div>
     </section>
   </template>

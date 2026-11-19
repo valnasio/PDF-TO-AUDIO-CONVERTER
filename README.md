@@ -57,7 +57,7 @@ O projeto ficou parado nesse ponto. Com a chegada das ferramentas de IA, voltei 
 |---|---|---|
 | **PDFs grandes** | Cortes fixos de 9.999 caracteres, palavras quebradas | Divisão só entre frases e parágrafos, milhares de páginas |
 | **Voz** | gTTS (robotizada) | Vozes neurais naturais (Francisca, Antônio, Thalita…) |
-| **Resultado** | Um MP3 por página | Um único audiolivro com navegação por página |
+| **Resultado** | MP3 soltos, sem nome | Um áudio por página, numa pasta com o nome dos capítulos, e o livro completo |
 | **Texto faltando** | Sem verificação | Cada trecho é conferido e refeito se faltar algo |
 | **Interrupções** | Recomeçava do zero | Continua de onde parou |
 | **Como usar** | Editar o código e rodar no terminal | Dois cliques no `.exe` |
@@ -80,7 +80,7 @@ O projeto ficou parado nesse ponto. Com a chegada das ferramentas de IA, voltei 
   </tr>
   <tr>
     <td><b>🎧 Player:</b> velocidade de 0.75× a 2×, ir para página, texto acompanhando a narração, continuar de onde parou e baixar o MP3.</td>
-    <td><b>📚 Biblioteca:</b> todos os seus arquivos, com busca e progresso de escuta. Ouça o áudio ou leia o PDF.</td>
+    <td><b>📚 Biblioteca:</b> todos os seus arquivos, com busca e progresso de escuta. Ouça o livro completo, abra a pasta com um áudio por página (ex.: <code>o-pequeno-principe/audio004-pag005-capitulo-i.mp3</code>), baixe tudo em .zip ou leia o PDF.</td>
   </tr>
 </table>
 
@@ -137,7 +137,9 @@ Abra **[valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app](https://valnasio.github.i
 |---|---|
 | Voz robótica | Vozes neurais da Microsoft via [`edge-tts`](https://github.com/rany2/edge-tts) |
 | Palavras cortadas | O texto só é dividido entre parágrafos e frases. A hifenização de fim de linha é desfeita ("pala-/vra" → "palavra", mantendo "disse-lhe") e parágrafos que continuam na página seguinte são unidos |
-| Palavras faltando | O serviço informa cada palavra falada. Se menos de 97% do trecho for lido, ele é gerado de novo (até 6 tentativas) |
+| Palavras faltando | O serviço informa cada palavra falada e o app confere se o áudio não terminou antes da última palavra. Trecho incompleto é refeito; se continuar incompleto, é refeito frase a frase. Se uma frase não puder ser lida, a conversão pausa com erro (nunca pula texto em silêncio) |
+| Páginas sem leitura | Cada frase fica inteira na página em que começa, e cada página vira um áudio. Ao final, um relatório mostra quantas páginas foram narradas e quais não têm texto (imagens ou páginas escaneadas) |
+| Conversões longas | No Windows, o computador não entra em suspensão enquanto há conversão em andamento |
 | Entonação estranha | Cabeçalhos, rodapés e números de página são removidos. Títulos ganham pausa e travessões de diálogo viram pausas |
 | PDFs enormes | Extração página a página, trechos salvos em disco, síntese em paralelo e montagem do áudio em streaming. Um PDF de 2.130 páginas é lido em ~2 segundos |
 

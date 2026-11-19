@@ -60,7 +60,19 @@ const routes = [
   [/^#\/convertendo\/(\w+)$/, renderConverting, "upload"],
   [/^#\/ouvir\/(\w+)$/, renderPlayer, "library"],
   [/^#\/ler\/(\w+)$/, renderReader, "library"],
+  [/^#\/arquivos\/(\w+)$/, renderFiles, "library"],
 ];
+
+// Relatório de verificação da conversão (páginas narradas / sem texto).
+function reportHtml(r) {
+  if (!r) return "";
+  const pages = (list) => (list.length > 12 ? `${list.slice(0, 12).join(", ")}… (${list.length})` : list.join(", "));
+  let html = `<span class="ok">✔ ${r.pages_with_audio} de ${r.pages_total} páginas narradas · texto 100% conferido</span>`;
+  if (r.no_text.length) {
+    html += ` · <span class="warn">⚠ ${r.no_text.length === 1 ? "página" : "páginas"} ${pages(r.no_text)} sem texto (imagem ou escaneada)</span>`;
+  }
+  return html;
+}
 
 function router() {
   if (cleanup) { cleanup(); cleanup = null; }
@@ -281,6 +293,12 @@ function renderPlayer(id) {
     seek.max = Math.ceil(duration * 10);
     $("#pl-read", root).href = `#/ler/${id}`;
     $("#pl-download", root).href = `/api/documents/${id}/audio?download=true`;
+    $("#pl-files", root).href = `#/arquivos/${id}`;
+    if (doc.report) {
+      const rep = $("#pl-report", root);
+      rep.innerHTML = reportHtml(doc.report);
+      rep.hidden = false;
+    }
     pageSel.innerHTML = doc.page_marks.map((m) => `<option value="${m.page}" data-time="${m.time}">Página ${m.page}</option>`).join("");
 
     speed.value = localStorage.getItem("speed") || "1";
@@ -369,6 +387,7 @@ function renderLibrary() {
           ${listened}
           <div class="lib-actions">
             ${d.status === "ready" ? `<a class="btn primary" href="#/ouvir/${d.id}">🎧 Ouvir</a>` : ""}
+            ${d.status === "ready" ? `<a class="btn" href="#/arquivos/${d.id}" title="Áudios por página">📁</a>` : ""}
             ${working || d.status === "error" ? `<a class="btn" href="#/convertendo/${d.id}">${working ? "⏳ Progresso" : "↻ Detalhes"}</a>` : ""}
             <a class="btn" href="#/ler/${d.id}">📖 Ler</a>
             <button class="btn danger" data-del="${d.id}" title="Excluir">🗑</button>
@@ -407,6 +426,89 @@ function renderLibrary() {
 }
 
 // ---------------------------------------------------------------- tela: leitor PDF
+// ---------------------------------------------------------------- tela: arquivos (árvore)
+function renderFiles(id) {
+  const root = mount("#tpl-files");
+  const tree = $("#fl-tree", root), audio = $("#fl-audio", root), search = $("#fl-search", root);
+  let data = null, current = -1;
+
+  const pageLabel = (f) => (f.pages.length > 1 ? `pág. ${f.pages[0]}–${f.pages[f.pages.length - 1]}` : `pág. ${f.page}`);
+
+  const draw = () => {
+    const q = search.value.trim().toLowerCase();
+    // linhas em ordem de página: áudios + páginas sem texto
+    const rows = [
+      ...data.files.map((f, i) => ({ page: f.page, i, f })),
+      ...data.no_text.map((p) => ({ page: p, missing: true })),
+    ].sort((a, b) => a.page - b.page)
+      .filter((r) => !q || String(r.page) === q || (r.f && r.f.file.toLowerCase().includes(q)));
+    const items = rows.map((r) => r.missing
+      ? `<div class="tree-row missing"><span>🖼</span><span class="fname">pág. ${r.page} — sem texto (imagem), não narrada</span><span></span><span></span></div>`
+      : `<div class="tree-row ${r.i === current ? "playing" : ""}" data-i="${r.i}">
+          <span>🎵</span>
+          <span class="fname" title="${esc(r.f.file)}">${esc(r.f.file)}</span>
+          <span class="fmeta">${pageLabel(r.f)} · ${fmtTime(r.f.duration)} · ${fmtSize(r.f.size)}</span>
+          <span class="facts">
+            <button data-play="${r.i}" title="Ouvir">${r.i === current && !audio.paused ? "❚❚" : "▶"}</button>
+            <a href="/api/documents/${id}/files/${encodeURIComponent(r.f.file)}?download=true" title="Baixar">⬇</a>
+          </span>
+        </div>`).join("");
+    const closed = tree.querySelector(".tree-folder.closed") ? "closed" : "";
+    tree.innerHTML = `
+      <div class="tree-folder ${closed}"><span class="chev">▾</span>📁 ${esc(data.folder)}
+        <span class="count">${data.files.length} áudios</span></div>
+      <div class="tree-items">${items || '<div class="tree-row missing"><span></span><span>Nada encontrado.</span></div>'}</div>`;
+  };
+
+  const play = (i) => {
+    if (i < 0 || i >= data.files.length) return;
+    if (i === current && !audio.paused) { audio.pause(); return; }
+    if (i !== current) {
+      current = i;
+      audio.src = `/api/documents/${id}/files/${encodeURIComponent(data.files[i].file)}`;
+      $("#fl-now", root).textContent = data.files[i].file;
+      $("#fl-player", root).hidden = false;
+    }
+    audio.play();
+  };
+
+  tree.addEventListener("click", (ev) => {
+    if (ev.target.closest(".tree-folder")) { ev.target.closest(".tree-folder").classList.toggle("closed"); return; }
+    const b = ev.target.closest("[data-play]");
+    if (b) play(Number(b.dataset.play));
+  });
+  audio.addEventListener("play", draw);
+  audio.addEventListener("pause", draw);
+  audio.addEventListener("ended", () => play(current + 1)); // segue para a próxima página
+  search.addEventListener("input", draw);
+
+  const local = ["127.0.0.1", "localhost"].includes(location.hostname);
+  $("#fl-open", root).hidden = !local;
+  $("#fl-open", root).addEventListener("click", () => api(`/api/documents/${id}/open-folder`, { method: "POST" }).catch((e) => alert(e.message)));
+  $("#fl-listen", root).href = `#/ouvir/${id}`;
+  $("#fl-zip", root).href = `/api/documents/${id}/zip`;
+
+  Promise.all([api(`/api/documents/${id}`), api(`/api/documents/${id}/files`)]).then(([doc, files]) => {
+    $("#fl-title", root).textContent = doc.title;
+    data = files;
+    if (files.legacy) {
+      $("#fl-report", root).innerHTML = 'Este arquivo foi convertido numa versão anterior, que gerava um único MP3 e não conferia o áudio de cada trecho. <button class="btn primary small" id="fl-redo">↻ Converter novamente</button>';
+      $("#fl-redo", root).addEventListener("click", async () => {
+        if (!confirm("Converter de novo? O áudio atual será substituído por um áudio por página, com o texto 100% conferido.")) return;
+        await api(`/api/documents/${id}/reconvert`, { method: "POST" });
+        location.hash = `#/convertendo/${id}`;
+      });
+      $("#fl-zip", root).hidden = true;
+      tree.hidden = true;
+      return;
+    }
+    $("#fl-report", root).innerHTML = reportHtml(doc.report);
+    draw();
+  }).catch(() => (location.hash = "#/biblioteca"));
+
+  return () => { audio.pause(); audio.removeAttribute("src"); };
+}
+
 function renderReader(id) {
   const root = mount("#tpl-reader");
   api(`/api/documents/${id}`).then((d) => {

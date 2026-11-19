@@ -3,22 +3,28 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import uuid
+import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 
 from . import db
 from .config import LOG_PATH, STATIC_DIR
 from .pdf_text import pdf_title
 from .tts import DEFAULT_VOICE, VOICE_IDS, VOICES, voice_sample
-from .worker import converter, doc_dir
+from .worker import converter, doc_dir, load_pages
 
 _handlers: list[logging.Handler] = [logging.FileHandler(LOG_PATH, encoding="utf-8")]
 if sys.stderr is not None:  # no executável sem console não há stderr
@@ -133,6 +139,27 @@ def retry(doc_id: str):
     return _public(db.get(doc_id))
 
 
+@app.post("/api/documents/{doc_id}/reconvert")
+async def reconvert(doc_id: str):
+    """Converte de novo com o PDF já salvo (ex.: arquivos da versão antiga, de MP3 único)."""
+    doc = _require(doc_id)
+    if doc["status"] not in ("ready", "error"):
+        raise HTTPException(409, "A conversão deste arquivo ainda está em andamento")
+    folder = doc_dir(doc_id)
+
+    def clean() -> None:
+        for item in folder.iterdir():
+            if item.name == "source.pdf":
+                continue
+            shutil.rmtree(item, ignore_errors=True) if item.is_dir() else item.unlink(missing_ok=True)
+
+    await asyncio.to_thread(clean)
+    db.update(doc_id, status="queued", error=None, chunks_done=0, chunks_total=0,
+              duration=0, file_size=0, page_marks=[], report=None)
+    converter.enqueue(doc_id)
+    return _public(db.get(doc_id))
+
+
 @app.delete("/api/documents/{doc_id}", status_code=204)
 async def delete_document(doc_id: str):
     _require(doc_id)
@@ -143,17 +170,143 @@ async def delete_document(doc_id: str):
     return Response(status_code=204)
 
 
-@app.get("/api/documents/{doc_id}/audio")
-def audio(doc_id: str, download: bool = False):
+def _disposition(kind: str, filename: str) -> str:
+    return f"{kind}; filename*=UTF-8''{quote(filename)}"
+
+
+def _concat_response(paths: list[Path], request: Request, filename: str, download: bool) -> Response:
+    """Serve vários MP3 como um arquivo só, com suporte a Range (avançar/voltar
+    no player). Usado para o livro completo, formado pelos áudios das páginas."""
+    sizes = [p.stat().st_size for p in paths]
+    total = sum(sizes)
+    start, end, status = 0, total - 1, 200
+    rng = request.headers.get("range", "")
+    if rng.startswith("bytes="):
+        a, _, b = rng[6:].split(",")[0].partition("-")
+        try:
+            if a:
+                start = int(a)
+                end = min(int(b), total - 1) if b else total - 1
+            elif b:  # últimos N bytes
+                start = max(0, total - int(b))
+            status = 206
+        except ValueError:
+            pass
+        if start > end or start >= total:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{total}"})
+
+    def body():
+        pos = 0
+        for path, size in zip(paths, sizes):
+            if pos + size <= start:
+                pos += size
+                continue
+            if pos > end:
+                break
+            with open(path, "rb") as f:
+                f.seek(max(0, start - pos))
+                remaining = min(end, pos + size - 1) - max(start, pos) + 1
+                while remaining > 0:
+                    data = f.read(min(256 * 1024, remaining))
+                    if not data:
+                        break
+                    remaining -= len(data)
+                    yield data
+            pos += size
+
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(end - start + 1),
+        "Content-Disposition": _disposition("attachment" if download else "inline", filename),
+    }
+    if status == 206:
+        headers["Content-Range"] = f"bytes {start}-{end}/{total}"
+    return StreamingResponse(body(), status_code=status, media_type="audio/mpeg", headers=headers)
+
+
+def _ready_pages(doc_id: str) -> tuple[dict, dict | None]:
     doc = _require(doc_id)
-    path = doc_dir(doc_id) / "audio.mp3"
-    if doc["status"] != "ready" or not path.exists():
+    if doc["status"] != "ready":
         raise HTTPException(409, "Áudio ainda não está pronto")
-    name = f"{Path(doc['filename']).stem}.mp3"
+    return doc, load_pages(doc_id)
+
+
+@app.get("/api/documents/{doc_id}/audio")
+def audio(doc_id: str, request: Request, download: bool = False):
+    """Livro completo em um único MP3."""
+    doc, pages = _ready_pages(doc_id)
+    if pages is None:  # convertido numa versão antiga: um único audio.mp3
+        path = doc_dir(doc_id) / "audio.mp3"
+        if not path.exists():
+            raise HTTPException(404, "Áudio não encontrado")
+        return FileResponse(
+            path, media_type="audio/mpeg", filename=f"{Path(doc['filename']).stem}.mp3",
+            content_disposition_type="attachment" if download else "inline",
+        )
+    folder = doc_dir(doc_id) / pages["folder"]
+    paths = [folder / f["file"] for f in pages["files"]]
+    return _concat_response(paths, request, f"{pages['folder']}.mp3", download)
+
+
+@app.get("/api/documents/{doc_id}/files")
+def files(doc_id: str):
+    """Árvore de arquivos: pasta do livro com um áudio por página."""
+    doc, pages = _ready_pages(doc_id)
+    if pages is None:
+        return {"folder": Path(doc["filename"]).stem, "files": [], "no_text": [], "legacy": True}
+    return pages
+
+
+@app.get("/api/documents/{doc_id}/files/{name}")
+def file_item(doc_id: str, name: str, download: bool = False):
+    _doc, pages = _ready_pages(doc_id)
+    if pages is None or name not in {f["file"] for f in pages["files"]}:
+        raise HTTPException(404, "Arquivo não encontrado")
     return FileResponse(
-        path, media_type="audio/mpeg", filename=name,
+        doc_dir(doc_id) / pages["folder"] / name, media_type="audio/mpeg", filename=name,
         content_disposition_type="attachment" if download else "inline",
     )
+
+
+@app.get("/api/documents/{doc_id}/zip")
+async def zip_folder(doc_id: str):
+    """Pasta do livro compactada (MP3 já é comprimido: ZIP sem recompressão)."""
+    _doc, pages = _ready_pages(doc_id)
+    if pages is None:
+        raise HTTPException(409, "Conversão feita numa versão antiga: baixe o MP3 completo")
+    folder = doc_dir(doc_id) / pages["folder"]
+    tmp = Path(tempfile.mkstemp(suffix=".zip")[1])
+
+    def build() -> None:
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as z:
+            for f in pages["files"]:
+                z.write(folder / f["file"], f"{pages['folder']}/{f['file']}")
+
+    await asyncio.to_thread(build)
+    return FileResponse(
+        tmp, media_type="application/zip", filename=f"{pages['folder']}.zip",
+        background=BackgroundTask(tmp.unlink, missing_ok=True),
+    )
+
+
+@app.post("/api/documents/{doc_id}/open-folder")
+def open_folder(doc_id: str, request: Request):
+    """Abre a pasta dos áudios no gerenciador de arquivos (só para o próprio computador)."""
+    if request.client is None or request.client.host not in ("127.0.0.1", "::1"):
+        raise HTTPException(403, "Disponível apenas no computador onde o programa está aberto")
+    _doc, pages = _ready_pages(doc_id)
+    folder = doc_dir(doc_id) / (pages["folder"] if pages else "")
+    if sys.platform == "win32":
+        os.startfile(folder)  # noqa: S606
+    else:
+        env = dict(os.environ)
+        orig = env.pop("LD_LIBRARY_PATH_ORIG", None)
+        if orig is not None:
+            env["LD_LIBRARY_PATH"] = orig
+        else:
+            env.pop("LD_LIBRARY_PATH", None)
+        subprocess.Popen(["xdg-open", str(folder)], env=env)
+    return {"ok": True}
 
 
 @app.get("/api/documents/{doc_id}/pdf")

@@ -35,6 +35,11 @@ _conn.executescript(
     );
     """
 )
+# Colunas adicionadas em versões novas (bancos antigos são atualizados aqui).
+_existing = {r[1] for r in _conn.execute("PRAGMA table_info(documents)")}
+for _col, _type in (("folder", "TEXT"), ("report", "TEXT")):
+    if _col not in _existing:
+        _conn.execute(f"ALTER TABLE documents ADD COLUMN {_col} {_type}")
 _conn.commit()
 
 ACTIVE_STATUSES = ("queued", "extracting", "synthesizing", "finalizing")
@@ -45,6 +50,7 @@ def _row(r: sqlite3.Row | None) -> dict[str, Any] | None:
         return None
     d = dict(r)
     d["page_marks"] = json.loads(d.get("page_marks") or "[]")
+    d["report"] = json.loads(d["report"]) if d.get("report") else None
     return d
 
 
@@ -63,8 +69,9 @@ def create(doc_id: str, title: str, filename: str, voice: str) -> dict:
 def update(doc_id: str, **fields: Any) -> None:
     if not fields:
         return
-    if "page_marks" in fields:
-        fields["page_marks"] = json.dumps(fields["page_marks"])
+    for key in ("page_marks", "report"):
+        if key in fields and not isinstance(fields[key], str) and fields[key] is not None:
+            fields[key] = json.dumps(fields[key])
     fields["updated_at"] = time.time()
     cols = ", ".join(f"{k} = ?" for k in fields)
     with _lock:

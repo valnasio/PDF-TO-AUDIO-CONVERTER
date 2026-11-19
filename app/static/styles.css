@@ -137,3 +137,38 @@ select, input[type=search] { background: var(--bg2); color: var(--text); border:
 /* Leitor de PDF por imagens (janelas sem visualizador de PDF, ex.: Linux) */
 .pdf-pages { flex: 1; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 14px; background: #1a1d26; border: 1px solid var(--line); border-radius: 14px; }
 .pdf-pages img { width: 100%; max-width: 900px; min-height: 300px; background: #fff; border-radius: 4px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+
+/* Relatório de verificação */
+.report { margin: 14px 0 0; font-size: .88rem; color: var(--muted); text-align: center; }
+.report .ok { color: var(--accent2); font-weight: 600; }
+.report .warn { color: #f5c46b; }
+
+/* Arquivos: árvore de áudios por página */
+.files-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.files-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.files h1 { font-size: 1.6rem; }
+.files .report { text-align: left; margin: 0 0 16px; }
+#fl-search { width: 100%; margin-bottom: 14px; }
+.tree { background: var(--bg2); border: 1px solid var(--line); border-radius: 16px; padding: 10px; margin-bottom: 100px; }
+.tree-folder { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-weight: 600; cursor: pointer; border-radius: 10px; user-select: none; }
+.tree-folder:hover { background: var(--card); }
+.tree-folder .chev { transition: transform .15s; display: inline-block; width: 14px; color: var(--muted); }
+.tree-folder.closed .chev { transform: rotate(-90deg); }
+.tree-folder .count { margin-left: auto; font-weight: 400; font-size: .85rem; color: var(--muted); }
+.tree-items { margin-left: 22px; border-left: 1px dashed var(--line); padding-left: 8px; }
+.tree-folder.closed + .tree-items { display: none; }
+.tree-row { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; font-size: .92rem; }
+.tree-row:hover { background: var(--card); }
+.tree-row.playing { background: #252142; }
+.tree-row .fname { font-family: Consolas, "Cascadia Mono", monospace; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-row .fmeta { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.tree-row .facts { display: flex; gap: 4px; }
+.tree-row .facts button, .tree-row .facts a { background: none; border: 1px solid var(--line); color: var(--text); border-radius: 8px; width: 32px; height: 30px; display: grid; place-items: center; cursor: pointer; font-size: .85rem; }
+.tree-row .facts button:hover, .tree-row .facts a:hover { border-color: var(--accent); }
+.tree-row.missing { color: var(--muted); font-style: italic; }
+.tree-row.missing .fname { font-family: inherit; }
+.mini-player { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(860px, calc(100% - 32px)); background: var(--card); border: 1px solid #3d3a6e; border-radius: 16px; padding: 10px 14px; display: flex; align-items: center; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.5); z-index: 20; }
+.mini-player audio { flex: 1; height: 36px; }
+.mp-info { display: flex; gap: 8px; align-items: center; font-size: .85rem; max-width: 45%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-width: 720px) { .tree-row { grid-template-columns: 22px 1fr auto; } .tree-row .fmeta { display: none; } .mini-player { flex-direction: column; align-items: stretch; } .mp-info { max-width: 100%; } }
+.btn.small { padding: 6px 12px; font-size: .85rem; margin-left: 6px; }

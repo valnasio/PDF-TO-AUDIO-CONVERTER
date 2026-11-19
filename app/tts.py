@@ -45,6 +45,7 @@ class SynthesisError(RuntimeError):
 class SynthResult:
     size: int
     coverage: float
+    split: bool = False  # precisou ser refeito frase a frase
 
     @property
     def duration(self) -> float:
@@ -74,29 +75,35 @@ def prepare_for_speech(text: str) -> str:
 
 
 async def _synthesize_once(text: str, voice: str, rate: str) -> tuple[bytes, float]:
+    """Uma chamada ao serviço. Devolve (áudio, cobertura 0..1).
+
+    A cobertura compara as palavras que o serviço diz ter falado com o texto
+    enviado. Se o áudio terminar antes da última palavra anunciada (resposta
+    cortada no meio), a cobertura é zerada para forçar nova tentativa."""
     communicate = edge_tts.Communicate(
         text, voice, rate=rate, boundary="WordBoundary",
         connect_timeout=20, receive_timeout=90,
     )
     audio = bytearray()
     words: list[str] = []
+    last_word_end = 0.0
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             audio.extend(chunk["data"])
         elif chunk["type"] == "WordBoundary":
             words.append(chunk.get("text", ""))
-    return bytes(audio), _coverage(text, words)
+            last_word_end = (chunk.get("offset", 0) + chunk.get("duration", 0)) / 1e7
+    coverage = _coverage(text, words)
+    if words and len(audio) / MP3_BYTES_PER_SECOND < last_word_end - 0.5:
+        coverage = 0.0  # áudio truncado
+    return bytes(audio), coverage
 
 
-async def synthesize_to_file(
-    text: str, voice: str, out_path: str, rate: str = "+0%"
-) -> SynthResult:
-    """Sintetiza `text` em `out_path` (escrita atômica), com validação e retries."""
-    text = prepare_for_speech(text)
+async def _best_of(text: str, voice: str, rate: str, attempts: int) -> tuple[bytes | None, float, Exception | None]:
+    """Tenta até `attempts` vezes; para assim que o texto sair completo."""
     best: tuple[bytes, float] | None = None
     last_error: Exception | None = None
-
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+    for attempt in range(1, attempts + 1):
         try:
             audio, coverage = await _synthesize_once(text, voice, rate)
             if not audio:
@@ -105,26 +112,61 @@ async def synthesize_to_file(
                 best = (audio, coverage)
             if coverage >= MIN_COVERAGE:
                 break
-            log.warning("Trecho incompleto (%.0f%% falado), tentativa %d", coverage * 100, attempt)
+            log.warning("Trecho incompleto (%.0f%% falado), tentativa %d/%d", coverage * 100, attempt, attempts)
         except Exception as exc:  # rede, timeout, limite de requisições...
             last_error = exc
-            log.warning("Falha na síntese (tentativa %d/%d): %s", attempt, MAX_ATTEMPTS, exc)
-        if attempt < MAX_ATTEMPTS:
+            log.warning("Falha na síntese (tentativa %d/%d): %s", attempt, attempts, exc)
+        if attempt < attempts:
             await asyncio.sleep(min(30, 1.5 * 2 ** (attempt - 1)))
-
     if best is None:
-        raise SynthesisError(f"Não foi possível sintetizar o trecho: {last_error}")
+        return None, 0.0, last_error
+    return best[0], best[1], last_error
 
-    audio, coverage = best
-    if coverage < 0.9:
-        raise SynthesisError(
-            f"O serviço de voz não leu o trecho por completo ({coverage:.0%}) após {MAX_ATTEMPTS} tentativas"
-        )
+
+def _split_sentences(text: str) -> list[str]:
+    from .pdf_text import _SENTENCE_SPLIT_RE, _split_long
+
+    out: list[str] = []
+    for line in text.splitlines():
+        for sentence in _SENTENCE_SPLIT_RE.split(line):
+            if sentence.strip():
+                out.extend(_split_long(sentence.strip(), 300))
+    return out
+
+
+async def synthesize_to_file(
+    text: str, voice: str, out_path: str, rate: str = "+0%"
+) -> SynthResult:
+    """Sintetiza `text` em `out_path` (escrita atômica) garantindo o texto completo.
+
+    1. Até 4 tentativas com o trecho inteiro.
+    2. Se continuar incompleto, sintetiza frase a frase (pedidos menores falham
+       menos), verificando cada frase com até 6 tentativas.
+    3. Se mesmo assim alguma frase não for lida por completo, gera erro — a
+       conversão pausa e pode ser retomada, mas nunca pula texto em silêncio.
+    """
+    text = prepare_for_speech(text)
+    audio, coverage, error = await _best_of(text, voice, rate, attempts=4)
+    split = False
+    if audio is None or coverage < MIN_COVERAGE:
+        split = True
+        log.warning("Trecho continua incompleto; sintetizando frase a frase")
+        pieces: list[bytes] = []
+        coverages: list[float] = []
+        for sentence in _split_sentences(text):
+            part, cov, err = await _best_of(sentence, voice, rate, attempts=MAX_ATTEMPTS)
+            if part is None or cov < MIN_COVERAGE:
+                motivo = f"erro de conexão: {err}" if part is None else f"só {cov:.0%} foi falado"
+                raise SynthesisError(f'O serviço de voz não conseguiu ler a frase "{sentence[:80]}…" ({motivo}).')
+            pieces.append(part)
+            coverages.append(cov)
+        audio, coverage = b"".join(pieces), min(coverages, default=1.0)
+
     tmp = out_path + ".part"
     with open(tmp, "wb") as f:
         f.write(audio)
     os.replace(tmp, out_path)
-    return SynthResult(size=len(audio), coverage=coverage)
+    return SynthResult(size=len(audio), coverage=coverage, split=split)
 
 
 async def voice_sample(voice: str) -> bytes:
