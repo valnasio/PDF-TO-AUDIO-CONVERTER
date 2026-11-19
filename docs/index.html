@@ -166,6 +166,17 @@
     .shots img.active { display: block; }
     .shots p { margin-top: 18px; color: var(--ink-soft); }
 
+    /* ---------- Como instalar ---------- */
+    .install-steps { list-style: none; margin: 0; padding: 0; counter-reset: inst; max-width: 820px; }
+    .install-steps li { counter-increment: inst; position: relative; padding: 20px 0 20px 64px; border-top: 1px solid var(--line); }
+    .install-steps li:last-child { border-bottom: 1px solid var(--line); }
+    .install-steps li::before { content: counter(inst); position: absolute; left: 0; top: 14px; font: 800 2.2rem/1 var(--display); color: var(--link); letter-spacing: -.04em; }
+    .cmd { display: flex; align-items: center; gap: 10px; margin-top: 10px; background: var(--mist); border-radius: 6px; padding: 10px 12px; }
+    .cmd code { background: none; padding: 0; flex: 1; font-size: .92rem; }
+    .copy { flex: none; background: transparent; color: var(--ink); border: 1.5px solid var(--line); border-radius: 6px; padding: 5px 10px; font: 700 .85rem var(--body); cursor: pointer; }
+    .copy:hover { border-color: var(--ink); }
+    .install-foot { margin-top: 28px; color: var(--ink-soft); }
+
     /* ---------- Passos (sequência real: numerados) ---------- */
     .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; counter-reset: step; }
     .steps li { counter-increment: step; border-top: 1.5px solid var(--ink); padding-top: 22px; }
@@ -235,6 +246,7 @@
       <div class="nav-right">
       <div class="nav-links">
         <a href="#versoes">Versões</a>
+        <a href="#instalar">Instalar</a>
         <a href="#recursos">Recursos</a>
         <a href="#telas">Telas</a>
         <a href="#historia">História</a>
@@ -307,7 +319,7 @@
         <div class="version" data-os="linux">
           <span class="badge">Recomendado para o seu computador</span>
           <h3>Linux</h3>
-          <p class="version-req">Ubuntu, Debian, Mint e Fedora, <span class="js-size-linux">40 MB</span></p>
+          <p class="version-req">Ubuntu, Debian, Mint, Fedora e outras distribuições, <span class="js-size-linux">40 MB</span></p>
           <ul>
             <li>Os mesmos recursos da versão Windows</li>
             <li>Janela própria, com atalho no menu</li>
@@ -316,8 +328,9 @@
           <div class="version-actions">
             <a class="btn" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb">Baixar .deb</a>
             <a class="btn btn-quiet" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm">Baixar .rpm</a>
+            <a class="btn btn-quiet" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak">Baixar .flatpak</a>
           </div>
-          <p class="note">Use o .deb no Ubuntu, Debian, Mint e Pop!_OS, e o .rpm no Fedora.</p>
+          <p class="note">Use o .deb no Ubuntu, Debian, Mint e Pop!_OS, o .rpm no Fedora, e o .flatpak em qualquer outra distribuição. <a class="link" href="#instalar">Veja como instalar</a>.</p>
         </div>
         <div class="version" data-os="mobile">
           <span class="badge">Recomendado para o seu aparelho</span>
@@ -378,17 +391,59 @@
     </div>
   </section>
 
-  <section class="section" id="como">
+  <section class="section" id="instalar">
     <div class="wrap">
       <div class="section-head">
-        <h2>Comece em três passos</h2>
-        <p>Em menos de um minuto você já está ouvindo.</p>
+        <h2>Como instalar</h2>
+        <p>Escolha o seu sistema e siga os passos. Em poucos minutos você já está ouvindo.</p>
       </div>
-      <ol class="steps">
-        <li><h3>Baixe</h3><p>Escolha a versão para Windows ou Linux, ou <a class="link" href="app/">use no navegador</a> sem baixar nada.</p></li>
-        <li><h3>Abra</h3><p>Dê dois cliques no arquivo. No Windows, não precisa instalar.</p></li>
-        <li><h3>Ouça</h3><p>Arraste o PDF, escolha a voz e clique em Converter em áudio.</p></li>
-      </ol>
+      <div class="tabs install-tabs" role="tablist" aria-label="Sistema operacional">
+        <button role="tab" aria-selected="true" data-os-tab="windows">Windows</button>
+        <button role="tab" aria-selected="false" data-os-tab="deb">Ubuntu, Debian e Mint</button>
+        <button role="tab" aria-selected="false" data-os-tab="rpm">Fedora</button>
+        <button role="tab" aria-selected="false" data-os-tab="flatpak">Flatpak (qualquer Linux)</button>
+      </div>
+
+      <div class="install" data-os-panel="windows">
+        <ol class="install-steps">
+          <li><strong>Baixe o programa.</strong> <a class="link" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe">Baixar LeitorPDF.exe</a> (36 MB).</li>
+          <li><strong>Dê dois cliques no arquivo baixado.</strong> Não precisa instalar: o programa abre direto, numa janela própria.</li>
+          <li><strong>Se aparecer "O Windows protegeu o computador",</strong> clique em Mais informações e depois em Executar assim mesmo. O aviso aparece porque o programa não tem assinatura digital paga.</li>
+          <li><strong>Pronto.</strong> Arraste um PDF, escolha a voz e clique em Converter em áudio. Dica: guarde o arquivo numa pasta fixa, como Documentos, para encontrá-lo depois.</li>
+        </ol>
+      </div>
+
+      <div class="install" data-os-panel="deb" hidden>
+        <ol class="install-steps">
+          <li><strong>Baixe o pacote.</strong> <a class="link" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb">Baixar leitor-pdf_amd64.deb</a> (40 MB). Serve para Ubuntu, Debian, Linux Mint e Pop!_OS.</li>
+          <li><strong>Dê dois cliques no arquivo baixado.</strong> A Central de Programas abre: clique em Instalar e digite sua senha. Os componentes da janela são instalados junto, automaticamente.</li>
+          <li><strong>Prefere o terminal?</strong> Na pasta Downloads, rode: <span class="cmd"><code>sudo apt install ./leitor-pdf_amd64.deb</code><button type="button" class="copy" data-copy="sudo apt install ./leitor-pdf_amd64.deb">Copiar</button></span></li>
+          <li><strong>Abra pelo menu de aplicativos,</strong> procurando por "Leitor de PDF em Áudio".</li>
+        </ol>
+      </div>
+
+      <div class="install" data-os-panel="rpm" hidden>
+        <ol class="install-steps">
+          <li><strong>Baixe o pacote.</strong> <a class="link" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm">Baixar leitor-pdf.x86_64.rpm</a> (41 MB).</li>
+          <li><strong>Dê dois cliques no arquivo baixado.</strong> O GNOME Software abre: clique em Instalar. Os componentes da janela são instalados junto, automaticamente.</li>
+          <li><strong>Prefere o terminal?</strong> Na pasta Downloads, rode: <span class="cmd"><code>sudo dnf install ./leitor-pdf.x86_64.rpm</code><button type="button" class="copy" data-copy="sudo dnf install ./leitor-pdf.x86_64.rpm">Copiar</button></span></li>
+          <li><strong>Abra pelo menu de aplicativos,</strong> procurando por "Leitor de PDF em Áudio".</li>
+        </ol>
+      </div>
+
+      <div class="install" data-os-panel="flatpak" hidden>
+        <ol class="install-steps">
+          <li><strong>Confira se o seu Linux tem Flatpak.</strong> Fedora, Linux Mint e Pop!_OS já vêm prontos. No Ubuntu, instale uma vez com os comandos abaixo e reinicie o computador:
+            <span class="cmd"><code>sudo apt install flatpak gnome-software-plugin-flatpak</code><button type="button" class="copy" data-copy="sudo apt install flatpak gnome-software-plugin-flatpak">Copiar</button></span>
+            <span class="cmd"><code>flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo</code><button type="button" class="copy" data-copy="flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo">Copiar</button></span></li>
+          <li><strong>Baixe o pacote.</strong> <a class="link" href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak">Baixar leitor-pdf.flatpak</a> (40 MB).</li>
+          <li><strong>Dê dois cliques no arquivo baixado</strong> e clique em Instalar na loja de aplicativos. Ou, no terminal, na pasta Downloads: <span class="cmd"><code>flatpak install --user leitor-pdf.flatpak</code><button type="button" class="copy" data-copy="flatpak install --user leitor-pdf.flatpak">Copiar</button></span></li>
+          <li><strong>Aguarde a primeira instalação.</strong> Ela baixa os componentes do GNOME (cerca de 1 GB), que ficam compartilhados com outros apps Flatpak. As próximas são rápidas.</li>
+          <li><strong>Abra pelo menu de aplicativos,</strong> procurando por "Leitor de PDF em Áudio", ou rode: <span class="cmd"><code>flatpak run io.github.valnasio.LeitorPDF</code><button type="button" class="copy" data-copy="flatpak run io.github.valnasio.LeitorPDF">Copiar</button></span></li>
+        </ol>
+      </div>
+
+      <p class="install-foot">Sem computador por perto? <a class="link" href="app/">Use a versão no navegador</a>, que funciona até no celular e não precisa instalar nada.</p>
     </div>
   </section>
 
@@ -426,7 +481,7 @@
       </div>
       <div class="faq">
         <details><summary>Qual a diferença entre o aplicativo e a versão no navegador?</summary><p>O aplicativo para Windows e Linux gera um MP3 por página e o livro completo, com vozes neurais, para ouvir sem internet e levar para o celular. A versão no navegador lê o PDF em voz alta na hora, usando as vozes que o navegador oferece. No Microsoft Edge, essas vozes são as mesmas vozes naturais. Ela não gera MP3.</p></details>
-        <details><summary>Como instalo no Linux?</summary><p>Baixe o <code>.deb</code> (Ubuntu, Debian, Mint, Pop!_OS) ou o <code>.rpm</code> (Fedora) e abra com dois cliques. A Central de Programas instala tudo, inclusive os componentes da janela. Pelo terminal: <code>sudo apt install ./leitor-pdf_amd64.deb</code> ou <code>sudo dnf install ./leitor-pdf.x86_64.rpm</code>. Depois, procure "Leitor de PDF em Áudio" no menu.</p></details>
+        <details><summary>Como instalo no Linux?</summary><p>Use o <code>.deb</code> no Ubuntu, Debian, Mint e Pop!_OS, o <code>.rpm</code> no Fedora, e o <code>.flatpak</code> em qualquer outra distribuição. Em todos os casos é baixar e dar dois cliques. O passo a passo completo, com os comandos para o terminal, está em <a class="link" href="#instalar">Como instalar</a>.</p></details>
         <details><summary>O Windows mostrou "O Windows protegeu o computador". É seguro?</summary><p>Sim. Esse aviso aparece em programas que não têm assinatura digital paga. Clique em Mais informações e depois em Executar assim mesmo. O código-fonte completo está aberto no GitHub.</p></details>
         <details><summary>Precisa de internet?</summary><p>Só durante a conversão, porque as vozes neurais são geradas online. Depois de pronto, o áudio pode ser ouvido sem internet.</p></details>
         <details><summary>Quanto tempo demora para converter?</summary><p>Cerca de 1 minuto para cada 15 a 20 minutos de áudio. Um livro de 70 páginas fica pronto em poucos minutos, e você pode continuar usando o programa enquanto isso.</p></details>
@@ -474,13 +529,26 @@
     syncTheme();
 
     // Galeria de telas (abas acessíveis)
-    const tabs = document.querySelectorAll(".tabs button");
+    const tabs = document.querySelectorAll("#telas .tabs button");
     const shots = document.querySelectorAll(".shots img");
     tabs.forEach((btn) => btn.addEventListener("click", () => {
       const i = Number(btn.dataset.shot);
       tabs.forEach((b) => b.setAttribute("aria-selected", String(b === btn)));
       shots.forEach((img, j) => img.classList.toggle("active", j === i));
       document.getElementById("caption").textContent = shots[i].dataset.caption;
+    }));
+
+    // Como instalar: uma aba por sistema
+    const instTabs = document.querySelectorAll(".install-tabs button");
+    const showInstall = (key) => {
+      instTabs.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.osTab === key)));
+      document.querySelectorAll("[data-os-panel]").forEach((p) => (p.hidden = p.dataset.osPanel !== key));
+    };
+    instTabs.forEach((b) => b.addEventListener("click", () => showInstall(b.dataset.osTab)));
+    document.querySelectorAll(".copy").forEach((b) => b.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado"; }
+      catch { b.textContent = "Selecione e copie"; }
+      setTimeout(() => (b.textContent = "Copiar"), 1800);
     }));
 
     // A página que fala: onda de áudio e um único avanço da leitura ao carregar.
@@ -525,6 +593,7 @@
     const altOs = document.querySelector(".js-alt-os");
     altOs.textContent = PRIMARY.alt[0]; altOs.href = PRIMARY.alt[1];
     document.querySelector(`.version[data-os="${os}"]`)?.classList.add("current");
+    if (os === "linux") showInstall(fedora ? "rpm" : /ubuntu|debian|mint/i.test(ua) ? "deb" : "flatpak");
     if (os === "mobile") {
       // o botão principal já abre a versão web: sem repetir o convite nem o ícone de download
       document.querySelector(".js-alt-web").remove();

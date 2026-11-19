@@ -15,6 +15,8 @@
 &nbsp;
 <a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm"><img src="https://img.shields.io/badge/⬇%20Linux-.rpm-7c6cff?style=for-the-badge&labelColor=5d4dff" alt="Baixar .rpm" height="42" /></a>
 &nbsp;
+<a href="https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak"><img src="https://img.shields.io/badge/⬇%20Linux-.flatpak-7c6cff?style=for-the-badge&labelColor=5d4dff" alt="Baixar .flatpak" height="42" /></a>
+&nbsp;
 <a href="https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/"><img src="https://img.shields.io/badge/▶%20Usar%20online-versão%20mini-36c5b0?style=for-the-badge&labelColor=1f8f7f" alt="Usar online" height="42" /></a>
 
 <br />
@@ -97,7 +99,7 @@ Escolha a versão que preferir:
 
 | | 🪟 Windows | 🐧 Linux | 🌐 Mini (web) |
 |---|---|---|---|
-| **Download** | [`LeitorPDF.exe`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe) (~36 MB) | [`.deb`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb) · [`.rpm`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm) (~45 MB) | [Abrir no navegador](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/) |
+| **Download** | [`LeitorPDF.exe`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe) (~36 MB) | [`.deb`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb) · [`.rpm`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm) · [`.flatpak`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak) (~40 MB) | [Abrir no navegador](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/) |
 | **Gera MP3** | ✅ | ✅ | ❌ lê em voz alta na hora |
 | **Vozes** | Neurais (Francisca, Antônio, Thalita…) | Neurais | As do navegador (no Edge, as mesmas vozes naturais) |
 | **Interface** | Janela própria | Janela própria | Navegador, inclusive no celular |
@@ -118,6 +120,7 @@ Baixe o pacote do seu sistema e abra com dois cliques (a Central de Programas in
 
 - **Ubuntu, Debian, Mint, Pop!_OS:** [`leitor-pdf_amd64.deb`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb)
 - **Fedora:** [`leitor-pdf.x86_64.rpm`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm)
+- **Qualquer outra distribuição:** [`leitor-pdf.flatpak`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak) (veja abaixo)
 
 Ou pelo terminal:
 
@@ -127,6 +130,21 @@ sudo dnf install ./leitor-pdf.x86_64.rpm     # Fedora
 ```
 
 Depois procure **"Leitor de PDF em Áudio"** no menu de aplicativos. O programa abre em janela própria (GTK + WebKitGTK, instalados automaticamente como dependências).
+
+#### Flatpak (qualquer distribuição)
+
+1. **Tenha o Flatpak instalado.** Fedora, Linux Mint e Pop!_OS já vêm prontos. No Ubuntu, rode uma vez e reinicie o computador:
+   ```bash
+   sudo apt install flatpak gnome-software-plugin-flatpak
+   flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+   ```
+2. **Baixe** o [`leitor-pdf.flatpak`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak).
+3. **Dê dois cliques** no arquivo e clique em Instalar na loja de aplicativos. Ou, no terminal, na pasta Downloads:
+   ```bash
+   flatpak install --user leitor-pdf.flatpak
+   ```
+4. A primeira instalação baixa os componentes do GNOME (cerca de 1 GB), que ficam compartilhados com outros apps Flatpak.
+5. Abra pelo menu ("Leitor de PDF em Áudio") ou com `flatpak run io.github.valnasio.LeitorPDF`.
 
 ### 🌐 Mini (web)
 
