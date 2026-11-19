@@ -76,6 +76,7 @@
         <li data-step="finalizing">Montando o áudio</li>
         <li data-step="ready">Pronto</li>
       </ol>
+      <a class="btn primary" id="conv-listen" hidden></a>
       <p class="muted small">Você pode sair desta tela: a conversão continua e o arquivo aparecerá na biblioteca.</p>
       <div class="error-box" id="conv-error" hidden>
         <p id="conv-error-msg"></p>
@@ -170,6 +171,7 @@
       </div>
       <h1 id="fl-title"></h1>
       <p class="report" id="fl-report"></p>
+      <p class="files-path" id="fl-path" hidden></p>
       <input type="search" id="fl-search" placeholder="Filtrar por página ou nome…" />
       <div class="tree" id="fl-tree"></div>
       <div class="mini-player" id="fl-player" hidden>

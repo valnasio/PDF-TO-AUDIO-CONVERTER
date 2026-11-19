@@ -156,8 +156,16 @@ def open_linux_window(url: str) -> bool:
 
 
 def open_browser(url: str) -> None:
-    os.environ.clear()
-    os.environ.update(_system_env())
+    # Só no Linux empacotado é preciso restaurar LD_LIBRARY_PATH para o navegador.
+    # Nunca limpar o ambiente inteiro: sem variáveis como SystemRoot o Windows
+    # deixa de resolver nomes (DNS) e toda síntese de voz falharia.
+    if getattr(sys, "frozen", False) and sys.platform.startswith("linux"):
+        fixed = _system_env()
+        if "LD_LIBRARY_PATH" in fixed:
+            os.environ["LD_LIBRARY_PATH"] = fixed["LD_LIBRARY_PATH"]
+        else:
+            os.environ.pop("LD_LIBRARY_PATH", None)
+        os.environ.pop("LD_LIBRARY_PATH_ORIG", None)
     print(f"{APP_NAME} rodando em {url}  (Ctrl+C para encerrar)", flush=True)
     try:
         webbrowser.open(url)

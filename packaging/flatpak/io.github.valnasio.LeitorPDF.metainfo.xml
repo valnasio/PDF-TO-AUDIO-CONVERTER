@@ -57,6 +57,11 @@
   </requires>
 
   <releases>
+    <release version="2.5.0" date="2026-11-19">
+      <description>
+        <p>Ouça cada página assim que ela fica pronta, sem esperar o livro inteiro. Os áudios agora ficam na pasta Música/PDFAudioConvert.</p>
+      </description>
+    </release>
     <release version="2.4.0" date="2026-11-19">
       <description>
         <p>Primeira versão em Flatpak.</p>

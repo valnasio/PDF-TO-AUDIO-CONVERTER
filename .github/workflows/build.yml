@@ -100,7 +100,8 @@ jobs:
       - name: Instala o Flatpak e o runtime GNOME
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq flatpak flatpak-builder xvfb imagemagick dbus-x11
+          sudo apt-get install -y -qq flatpak flatpak-builder xvfb imagemagick dbus-x11 xdg-user-dirs
+          xdg-user-dirs-update
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
       - name: Build (.flatpak)
         run: |
@@ -122,6 +123,10 @@ jobs:
           sleep 10
           pgrep -af linux_window.py
           import -window root dist/flatpak-janela.png
+          # os áudios vão para a pasta de música do usuário (fora do sandbox)
+          MUSIC=$(xdg-user-dir MUSIC)
+          test -d "$MUSIC/PDFAudioConvert" && echo "pasta de áudios ok: $MUSIC/PDFAudioConvert"
+          ! grep -q "Sem permissão para gravar" ~/.var/app/io.github.valnasio.LeitorPDF/data/LeitorPDF/leitor.log
       - uses: actions/upload-artifact@v4
         with:
           name: flatpak

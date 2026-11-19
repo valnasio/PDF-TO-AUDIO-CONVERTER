@@ -233,6 +233,10 @@ function renderConverting(id) {
         d.status === "extracting" && d.pages ? `Página ${d.pages_done} de ${d.pages}` :
         d.chunks_total ? `Trecho ${d.chunks_done} de ${d.chunks_total} · ${d.pages} páginas` : "";
       $("#conv-eta", root).textContent = eta(d);
+      const listen = $("#conv-listen", root);
+      listen.hidden = !(d.pages_ready > 0) || d.status === "ready";
+      listen.href = `#/arquivos/${id}`;
+      listen.textContent = `🎧 Ouvir as páginas já prontas (${d.pages_ready})`;
       const idx = order.indexOf(d.status);
       root.querySelectorAll("#conv-steps li").forEach((li) => {
         const i = order.indexOf(li.dataset.step);
@@ -409,6 +413,7 @@ function renderLibrary() {
           <div class="lib-actions">
             ${d.status === "ready" ? `<a class="btn primary" href="#/ouvir/${d.id}">🎧 Ouvir</a>` : ""}
             ${d.status === "ready" ? `<a class="btn" href="#/arquivos/${d.id}" title="Áudios por página">📁</a>` : ""}
+            ${working && d.pages_ready > 0 ? `<a class="btn primary" href="#/arquivos/${d.id}">🎧 Ouvir prontas</a>` : ""}
             ${working || d.status === "error" ? `<a class="btn" href="#/convertendo/${d.id}">${working ? "⏳ Progresso" : "↻ Detalhes"}</a>` : ""}
             <a class="btn" href="#/ler/${d.id}">📖 Ler</a>
             <button class="btn danger" data-del="${d.id}" title="Excluir">🗑</button>
@@ -451,43 +456,48 @@ function renderLibrary() {
 function renderFiles(id) {
   const root = mount("#tpl-files");
   const tree = $("#fl-tree", root), audio = $("#fl-audio", root), search = $("#fl-search", root);
-  let data = null, current = -1;
+  let data = null, current = null, timer = null, stopped = false;  // current = nome do arquivo tocando
 
   const pageLabel = (f) => (f.pages.length > 1 ? `pág. ${f.pages[0]}–${f.pages[f.pages.length - 1]}` : `pág. ${f.page}`);
+  const indexOf = (name) => data.files.findIndex((f) => f.file === name);
 
   const draw = () => {
     const q = search.value.trim().toLowerCase();
-    // linhas em ordem de página: áudios + páginas sem texto
+    // linhas em ordem de página: áudios prontos, páginas ainda convertendo e páginas sem texto
     const rows = [
-      ...data.files.map((f, i) => ({ page: f.page, i, f })),
+      ...data.files.map((f) => ({ page: f.page, f })),
+      ...(data.waiting || []).map((p) => ({ page: p, waiting: true })),
       ...data.no_text.map((p) => ({ page: p, missing: true })),
     ].sort((a, b) => a.page - b.page)
       .filter((r) => !q || String(r.page) === q || (r.f && r.f.file.toLowerCase().includes(q)));
     const items = rows.map((r) => r.missing
       ? `<div class="tree-row missing"><span>🖼</span><span class="fname">pág. ${r.page} — sem texto (imagem), não narrada</span><span></span><span></span></div>`
-      : `<div class="tree-row ${r.i === current ? "playing" : ""}" data-i="${r.i}">
+      : r.waiting
+      ? `<div class="tree-row missing"><span>⏳</span><span class="fname">pág. ${r.page} — convertendo…</span><span></span><span></span></div>`
+      : `<div class="tree-row ${r.f.file === current ? "playing" : ""}">
           <span>🎵</span>
           <span class="fname" title="${esc(r.f.file)}">${esc(r.f.file)}</span>
           <span class="fmeta">${pageLabel(r.f)} · ${fmtTime(r.f.duration)} · ${fmtSize(r.f.size)}</span>
           <span class="facts">
-            <button data-play="${r.i}" title="Ouvir">${r.i === current && !audio.paused ? "❚❚" : "▶"}</button>
+            <button data-play="${esc(r.f.file)}" title="Ouvir">${r.f.file === current && !audio.paused ? "❚❚" : "▶"}</button>
             <a href="/api/documents/${id}/files/${encodeURIComponent(r.f.file)}?download=true" title="Baixar">⬇</a>
           </span>
         </div>`).join("");
     const closed = tree.querySelector(".tree-folder.closed") ? "closed" : "";
+    const count = data.in_progress ? `${data.files.length} de ${data.total} áudios prontos` : `${data.files.length} áudios`;
     tree.innerHTML = `
-      <div class="tree-folder ${closed}"><span class="chev">▾</span>📁 ${esc(data.folder)}
-        <span class="count">${data.files.length} áudios</span></div>
-      <div class="tree-items">${items || '<div class="tree-row missing"><span></span><span>Nada encontrado.</span></div>'}</div>`;
+      <div class="tree-folder ${closed}"><span class="chev">▾</span>📁 ${esc(data.folder || "…")}
+        <span class="count">${count}</span></div>
+      <div class="tree-items">${items || '<div class="tree-row missing"><span></span><span>Nenhuma página pronta ainda. A lista se atualiza sozinha.</span></div>'}</div>`;
   };
 
-  const play = (i) => {
-    if (i < 0 || i >= data.files.length) return;
-    if (i === current && !audio.paused) { audio.pause(); return; }
-    if (i !== current) {
-      current = i;
-      audio.src = `/api/documents/${id}/files/${encodeURIComponent(data.files[i].file)}`;
-      $("#fl-now", root).textContent = data.files[i].file;
+  const play = (name) => {
+    if (!name || indexOf(name) < 0) return;
+    if (name === current && !audio.paused) { audio.pause(); return; }
+    if (name !== current) {
+      current = name;
+      audio.src = `/api/documents/${id}/files/${encodeURIComponent(name)}`;
+      $("#fl-now", root).textContent = name;
       $("#fl-player", root).hidden = false;
     }
     audio.play();
@@ -496,11 +506,16 @@ function renderFiles(id) {
   tree.addEventListener("click", (ev) => {
     if (ev.target.closest(".tree-folder")) { ev.target.closest(".tree-folder").classList.toggle("closed"); return; }
     const b = ev.target.closest("[data-play]");
-    if (b) play(Number(b.dataset.play));
+    if (b) play(b.dataset.play);
   });
   audio.addEventListener("play", draw);
   audio.addEventListener("pause", draw);
-  audio.addEventListener("ended", () => play(current + 1)); // segue para a próxima página
+  audio.addEventListener("ended", () => {
+    // segue para a próxima página pronta; se ela ainda estiver convertendo, para aqui
+    const next = data.files[indexOf(current) + 1];
+    if (next && !(data.waiting || []).some((p) => p > data.files[indexOf(current)].page && p < next.page)) play(next.file);
+    else draw();
+  });
   search.addEventListener("input", draw);
 
   const local = ["127.0.0.1", "localhost"].includes(location.hostname);
@@ -509,25 +524,46 @@ function renderFiles(id) {
   $("#fl-listen", root).href = `#/ouvir/${id}`;
   $("#fl-zip", root).href = `/api/documents/${id}/zip`;
 
-  Promise.all([api(`/api/documents/${id}`), api(`/api/documents/${id}/files`)]).then(([doc, files]) => {
-    $("#fl-title", root).textContent = doc.title;
-    data = files;
-    if (files.legacy) {
-      $("#fl-report", root).innerHTML = 'Este arquivo foi convertido numa versão anterior, que gerava um único MP3 e não conferia o áudio de cada trecho. <button class="btn primary small" id="fl-redo">↻ Converter novamente</button>';
-      $("#fl-redo", root).addEventListener("click", async () => {
-        if (!confirm("Converter de novo? O áudio atual será substituído por um áudio por página, com o texto 100% conferido.")) return;
-        await api(`/api/documents/${id}/reconvert`, { method: "POST" });
-        location.hash = `#/convertendo/${id}`;
-      });
-      $("#fl-zip", root).hidden = true;
-      tree.hidden = true;
-      return;
-    }
-    $("#fl-report", root).innerHTML = reportHtml(doc.report);
-    draw();
-  }).catch(() => (location.hash = "#/biblioteca"));
+  const showPath = (files) => {
+    const el = $("#fl-path", root);
+    el.hidden = !files.path;
+    el.textContent = files.path ? `Salvos em: ${files.path}` : "";
+  };
 
-  return () => { audio.pause(); audio.removeAttribute("src"); };
+  const load = async () => {
+    if (stopped) return;
+    try {
+      const [doc, files] = await Promise.all([api(`/api/documents/${id}`), api(`/api/documents/${id}/files`)]);
+      $("#fl-title", root).textContent = doc.title;
+      data = files;
+      if (files.legacy) {
+        $("#fl-report", root).innerHTML = 'Este arquivo foi convertido numa versão anterior, que gerava um único MP3 e não conferia o áudio de cada trecho. <button class="btn primary small" id="fl-redo">↻ Converter novamente</button>';
+        $("#fl-redo", root).addEventListener("click", async () => {
+          if (!confirm("Converter de novo? O áudio atual será substituído por um áudio por página, com o texto 100% conferido.")) return;
+          await api(`/api/documents/${id}/reconvert`, { method: "POST" });
+          location.hash = `#/convertendo/${id}`;
+        });
+        $("#fl-zip", root).hidden = true;
+        tree.hidden = true;
+        return;
+      }
+      const working = ["queued", "extracting", "synthesizing", "finalizing"].includes(doc.status);
+      $("#fl-zip", root).hidden = working;
+      $("#fl-listen", root).hidden = working;
+      $("#fl-report", root).innerHTML = working
+        ? `<span class="ok">Convertendo:</span> ${files.files.length} de ${files.total || "…"} páginas já podem ser ouvidas. A lista se atualiza sozinha. <a class="link" href="#/convertendo/${id}">Ver progresso</a>`
+        : reportHtml(doc.report);
+      showPath(files);
+      draw();
+      if (working) timer = setTimeout(load, 4000);
+    } catch {
+      if (!data) location.hash = "#/biblioteca";
+      else timer = setTimeout(load, 6000);
+    }
+  };
+  load();
+
+  return () => { stopped = true; clearTimeout(timer); audio.pause(); audio.removeAttribute("src"); };
 }
 
 function renderReader(id) {

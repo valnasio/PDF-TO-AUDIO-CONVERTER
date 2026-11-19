@@ -233,3 +233,7 @@ select:hover, input[type=search]:hover { border-color: var(--ink-soft); }
   .mini-player { flex-direction: column; align-items: stretch; }
   .mp-info { max-width: 100%; }
 }
+
+/* Áudios prontos durante a conversão e local da pasta */
+#conv-listen { margin-bottom: 18px; }
+.files-path { margin: -8px 0 16px; font-size: .88rem; color: var(--ink-soft); font-family: Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }

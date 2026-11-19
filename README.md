@@ -153,7 +153,9 @@ Abra **[valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app](https://valnasio.github.i
 ### Bom saber
 
 - Nas versões Windows e Linux, é preciso estar **conectado à internet durante a conversão**, porque as vozes são geradas online. Depois de convertido, o áudio pode ser ouvido sem internet.
-- A biblioteca fica em `%LOCALAPPDATA%\LeitorPDF` (Windows) ou `~/.local/share/LeitorPDF` (Linux).
+- **Os áudios ficam na sua pasta de música**, em `PDFAudioConvert`, com uma subpasta por livro: `Músicas\PDFAudioConvert` no Windows e `~/Música/PDFAudioConvert` no Linux (inclusive no Flatpak). O botão **Abrir pasta** leva direto até ela.
+- **Dá para ouvir durante a conversão:** cada página fica disponível assim que termina, sem esperar o livro inteiro.
+- Os dados internos do programa (biblioteca e PDFs) ficam em `%LOCALAPPDATA%\LeitorPDF` (Windows) ou `~/.local/share/LeitorPDF` (Linux).
 - Se o programa for fechado durante uma conversão, ela continua de onde parou na próxima vez que for aberto.
 
 ## 🧠 Como garantimos a qualidade
@@ -184,6 +186,7 @@ Opções: `--port 9000`, `--host 0.0.0.0 --browser` (acesso pela rede).
 
 Variáveis de ambiente opcionais:
 
+- `PDF_AUDIO_OUTPUT`: pasta onde ficam os áudios (padrão no executável: `Músicas/PDFAudioConvert`)
 - `PDF_AUDIO_DATA`: pasta da biblioteca (padrão: `./data`; no executável, `%LOCALAPPDATA%\LeitorPDF` ou `~/.local/share/LeitorPDF`)
 - `TTS_CONCURRENCY`: trechos sintetizados em paralelo (padrão: 6)
 

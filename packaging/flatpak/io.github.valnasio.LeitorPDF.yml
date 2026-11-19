@@ -27,6 +27,8 @@ finish-args:
   - --device=dri
   # Reprodução de áudio no player
   - --socket=pulseaudio
+  # Pasta dos audiolivros, fácil de achar: ~/Música/PDFAudioConvert (só essa subpasta)
+  - --filesystem=xdg-music/PDFAudioConvert:create
 
 build-options:
   # O executável já vem otimizado do PyInstaller: não remover símbolos de novo

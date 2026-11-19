@@ -24,7 +24,7 @@ from . import db
 from .config import LOG_PATH, STATIC_DIR
 from .pdf_text import pdf_title
 from .tts import DEFAULT_VOICE, VOICE_IDS, VOICES, voice_sample
-from .worker import converter, doc_dir, load_pages
+from .worker import MP3_BYTES_PER_SECOND, audio_dir, converter, doc_dir, load_pages, load_plan, remove_audio_dir
 
 _handlers: list[logging.Handler] = [logging.FileHandler(LOG_PATH, encoding="utf-8")]
 if sys.stderr is not None:  # no executável sem console não há stderr
@@ -146,8 +146,10 @@ async def reconvert(doc_id: str):
     if doc["status"] not in ("ready", "error"):
         raise HTTPException(409, "A conversão deste arquivo ainda está em andamento")
     folder = doc_dir(doc_id)
+    info = load_pages(doc_id) or load_plan(doc_id)
 
     def clean() -> None:
+        remove_audio_dir(doc_id, info)
         for item in folder.iterdir():
             if item.name == "source.pdf":
                 continue
@@ -155,7 +157,7 @@ async def reconvert(doc_id: str):
 
     await asyncio.to_thread(clean)
     db.update(doc_id, status="queued", error=None, chunks_done=0, chunks_total=0,
-              duration=0, file_size=0, page_marks=[], report=None)
+              duration=0, file_size=0, page_marks=[], report=None, pages_ready=0)
     converter.enqueue(doc_id)
     return _public(db.get(doc_id))
 
@@ -163,9 +165,11 @@ async def reconvert(doc_id: str):
 @app.delete("/api/documents/{doc_id}", status_code=204)
 async def delete_document(doc_id: str):
     _require(doc_id)
+    info = load_pages(doc_id) or load_plan(doc_id)
     converter.cancel(doc_id)
     db.delete(doc_id)
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(0.3)
+    await asyncio.to_thread(remove_audio_dir, doc_id, info)
     await asyncio.to_thread(shutil.rmtree, doc_dir(doc_id), True)
     return Response(status_code=204)
 
@@ -231,6 +235,32 @@ def _ready_pages(doc_id: str) -> tuple[dict, dict | None]:
     return doc, load_pages(doc_id)
 
 
+def _files_view(doc_id: str) -> tuple[dict, dict | None]:
+    """Áudios por página. Durante a conversão, lista as páginas que já ficaram
+    prontas (os arquivos só aparecem na pasta quando estão completos)."""
+    doc = _require(doc_id)
+    pages = load_pages(doc_id) if doc["status"] == "ready" else None
+    if pages:
+        return doc, {**pages, "path": str(audio_dir(doc_id, pages)), "in_progress": False}
+    plan = load_plan(doc_id)
+    if doc["status"] == "ready" or plan is None:
+        return doc, None
+    folder = audio_dir(doc_id, plan)
+    ready, waiting = [], []
+    for unit in plan["pages"]:
+        path = folder / unit["file"]
+        if path.exists():
+            size = path.stat().st_size
+            ready.append({"page": unit["page"], "pages": unit["pages"], "name": unit["name"],
+                          "file": unit["file"], "duration": round(size / MP3_BYTES_PER_SECOND, 2), "size": size})
+        else:
+            waiting.append(unit["page"])
+    return doc, {
+        "folder": plan["folder"], "path": str(folder), "files": ready, "waiting": waiting,
+        "no_text": plan["no_text"], "total": len(plan["pages"]), "in_progress": True,
+    }
+
+
 @app.get("/api/documents/{doc_id}/audio")
 def audio(doc_id: str, request: Request, download: bool = False):
     """Livro completo em um único MP3."""
@@ -243,27 +273,35 @@ def audio(doc_id: str, request: Request, download: bool = False):
             path, media_type="audio/mpeg", filename=f"{Path(doc['filename']).stem}.mp3",
             content_disposition_type="attachment" if download else "inline",
         )
-    folder = doc_dir(doc_id) / pages["folder"]
+    folder = audio_dir(doc_id, pages)
     paths = [folder / f["file"] for f in pages["files"]]
+    missing = [p.name for p in paths if not p.exists()]
+    if missing:
+        raise HTTPException(404, f"Áudio não encontrado na pasta {folder} (arquivo {missing[0]} foi movido ou apagado)")
     return _concat_response(paths, request, f"{pages['folder']}.mp3", download)
 
 
 @app.get("/api/documents/{doc_id}/files")
 def files(doc_id: str):
     """Árvore de arquivos: pasta do livro com um áudio por página."""
-    doc, pages = _ready_pages(doc_id)
-    if pages is None:
-        return {"folder": Path(doc["filename"]).stem, "files": [], "no_text": [], "legacy": True}
-    return pages
+    doc, view = _files_view(doc_id)
+    if view is None:
+        if doc["status"] == "ready":  # versão antiga: um único MP3
+            return {"folder": Path(doc["filename"]).stem, "files": [], "no_text": [], "legacy": True}
+        return {"folder": "", "files": [], "waiting": [], "no_text": [], "total": 0, "in_progress": True}
+    return view
 
 
 @app.get("/api/documents/{doc_id}/files/{name}")
 def file_item(doc_id: str, name: str, download: bool = False):
-    _doc, pages = _ready_pages(doc_id)
-    if pages is None or name not in {f["file"] for f in pages["files"]}:
+    _doc, view = _files_view(doc_id)
+    if view is None or name not in {f["file"] for f in view["files"]}:
         raise HTTPException(404, "Arquivo não encontrado")
+    path = Path(view["path"]) / name
+    if not path.exists():
+        raise HTTPException(404, f"O arquivo {name} foi movido ou apagado da pasta {view['path']}")
     return FileResponse(
-        doc_dir(doc_id) / pages["folder"] / name, media_type="audio/mpeg", filename=name,
+        path, media_type="audio/mpeg", filename=name,
         content_disposition_type="attachment" if download else "inline",
     )
 
@@ -274,7 +312,7 @@ async def zip_folder(doc_id: str):
     _doc, pages = _ready_pages(doc_id)
     if pages is None:
         raise HTTPException(409, "Conversão feita numa versão antiga: baixe o MP3 completo")
-    folder = doc_dir(doc_id) / pages["folder"]
+    folder = audio_dir(doc_id, pages)
     tmp = Path(tempfile.mkstemp(suffix=".zip")[1])
 
     def build() -> None:
@@ -294,8 +332,10 @@ def open_folder(doc_id: str, request: Request):
     """Abre a pasta dos áudios no gerenciador de arquivos (só para o próprio computador)."""
     if request.client is None or request.client.host not in ("127.0.0.1", "::1"):
         raise HTTPException(403, "Disponível apenas no computador onde o programa está aberto")
-    _doc, pages = _ready_pages(doc_id)
-    folder = doc_dir(doc_id) / (pages["folder"] if pages else "")
+    _doc, view = _files_view(doc_id)
+    if view is None or not Path(view["path"]).is_dir():
+        raise HTTPException(404, "A pasta deste livro ainda não foi criada")
+    folder = view["path"]
     if sys.platform == "win32":
         os.startfile(folder)  # noqa: S606
     else:
@@ -305,7 +345,7 @@ def open_folder(doc_id: str, request: Request):
             env["LD_LIBRARY_PATH"] = orig
         else:
             env.pop("LD_LIBRARY_PATH", None)
-        subprocess.Popen(["xdg-open", str(folder)], env=env)
+        subprocess.Popen(["xdg-open", folder], env=env)
     return {"ok": True}
 
 
