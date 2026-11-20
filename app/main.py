@@ -407,6 +407,65 @@ async def page_image(doc_id: str, number: int, w: int = 1100):
     return Response(png, media_type="image/png", headers={"Cache-Control": "max-age=86400"})
 
 
+def _scale(chunks: list[dict], duration: float) -> list[dict]:
+    """Ajusta os tempos dos trechos à duração real do arquivo da página."""
+    total = sum(c["end"] - c["start"] for c in chunks)
+    k = duration / total if total and duration else 1.0
+    pos = 0.0
+    for c in chunks:
+        length = (c["end"] - c["start"]) * k
+        c["start"], c["end"] = round(pos, 2), round(pos + length, 2)
+        pos += length
+    return chunks
+
+
+@app.get("/api/documents/{doc_id}/text")
+def page_text(doc_id: str, file: str):
+    """Texto de um áudio de página, em trechos com início e fim (segundos)
+    dentro daquele arquivo. Serve para acompanhar a leitura enquanto toca."""
+    doc = _require(doc_id)
+    pages = load_pages(doc_id) if doc["status"] == "ready" else None
+    if pages:
+        files = pages["files"]
+        idx = next((i for i, f in enumerate(files) if f["file"] == file), None)
+        tl_path = doc_dir(doc_id) / "timeline.json"
+        if idx is None or not tl_path.exists():
+            raise HTTPException(404, "Texto não encontrado para este áudio")
+        entry = files[idx]
+        start, end = entry["start"], entry["start"] + entry["duration"]
+        timeline = json.loads(tl_path.read_text(encoding="utf-8"))
+        items = [t for t in timeline if start - 0.05 <= t["start"] < end - 0.05]
+        chunks = [
+            {"start": t["start"] - start,
+             "end": (items[i + 1]["start"] if i + 1 < len(items) else end) - start,
+             "page": t["page"], "text": t["text"]}
+            for i, t in enumerate(items)
+        ]
+        return {"file": file, "duration": entry["duration"], "chunks": _scale(chunks, entry["duration"])}
+
+    plan = load_plan(doc_id)
+    unit = next((u for u in plan["pages"] if u["file"] == file), None) if plan else None
+    if unit is None:
+        raise HTTPException(404, "Texto não encontrado para este áudio")
+    path = audio_dir(doc_id, plan) / file
+    if not path.exists():
+        raise HTTPException(409, "Esta página ainda está sendo convertida")
+    duration = path.stat().st_size / MP3_BYTES_PER_SECOND
+    parts = doc_dir(doc_id) / "parts"
+    sizes = []
+    for c in unit["chunks"]:
+        try:
+            sizes.append(json.loads((parts / f"{c['index']:06d}.json").read_text())["size"])
+        except (OSError, ValueError, KeyError):
+            sizes = [len(c["text"]) for c in unit["chunks"]]  # sem a medida: estima pelo texto
+            break
+    chunks, pos = [], 0.0
+    for c, size in zip(unit["chunks"], sizes):
+        chunks.append({"start": pos, "end": pos + size, "page": c["page"], "text": c["text"]})
+        pos += size
+    return {"file": file, "duration": round(duration, 2), "chunks": _scale(chunks, duration)}
+
+
 @app.get("/api/documents/{doc_id}/timeline")
 def timeline(doc_id: str):
     _require(doc_id)

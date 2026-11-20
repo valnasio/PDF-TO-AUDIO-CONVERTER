@@ -85,7 +85,7 @@ O projeto parou aí. Anos depois, voltei a ele com ferramentas de IA para resolv
 
 <p align="center">
   <img src="docs/img/arquivos.png" alt="Áudios por página" width="90%" /><br />
-  <sub><b>Áudios por página.</b> Cada página vira um MP3 com o nome do capítulo, por exemplo <code>o-livro/audio004-pag005-capitulo-i.mp3</code>. Você ouve, baixa uma página ou a pasta inteira em .zip.</sub>
+  <sub><b>Áudios por página.</b> Cada página vira um MP3 com o nome do capítulo, por exemplo <code>o-livro/audio004-pag005-capitulo-i.mp3</code>. Você ouve, pula de página com ⏮ e ⏭, acompanha o texto com a frase lida em destaque e baixa uma página ou a pasta inteira em .zip.</sub>
 </p>
 
 As telas têm modo claro e noturno.

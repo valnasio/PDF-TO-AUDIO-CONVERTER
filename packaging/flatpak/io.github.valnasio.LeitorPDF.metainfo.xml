@@ -57,6 +57,11 @@
   </requires>
 
   <releases>
+    <release version="2.7.0" date="2026-11-20">
+      <description>
+        <p>Nos áudios por página, botões para ir à página anterior e à próxima. Enquanto o áudio toca, o texto da página aparece na tela com a frase lida em destaque; um clique na frase leva o áudio até ela.</p>
+      </description>
+    </release>
     <release version="2.6.0" date="2026-11-20">
       <description>
         <p>Vozes que rodam no próprio computador (Faber, Cadu e Jeff): sem limite de páginas e sem internet, agora o padrão. A conversão nunca mais fica parada em silêncio: avisos na tela, botão para cancelar e continuar depois, e as páginas prontas sempre disponíveis para ouvir.</p>

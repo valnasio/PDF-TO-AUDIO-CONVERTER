@@ -180,8 +180,14 @@
       <input type="search" id="fl-search" placeholder="Filtrar por página ou nome…" />
       <div class="tree" id="fl-tree"></div>
       <div class="mini-player" id="fl-player" hidden>
-        <div class="mp-info"><span class="mp-icon">🎵</span><span id="fl-now"></span></div>
-        <audio id="fl-audio" controls preload="none"></audio>
+        <div class="mp-text" id="fl-text" aria-live="off"></div>
+        <div class="mp-bar">
+          <div class="mp-info"><span class="mp-icon">🎵</span><span id="fl-now"></span></div>
+          <button class="mp-btn" id="fl-prev" title="Página anterior">⏮</button>
+          <audio id="fl-audio" controls preload="none"></audio>
+          <button class="mp-btn" id="fl-next" title="Próxima página">⏭</button>
+          <button class="mp-btn mp-toggle" id="fl-toggle" title="Mostrar ou esconder o texto">Texto</button>
+        </div>
       </div>
     </section>
   </template>

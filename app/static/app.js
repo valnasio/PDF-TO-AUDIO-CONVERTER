@@ -544,6 +544,115 @@ function renderFiles(id) {
       <div class="tree-items">${items || '<div class="tree-row missing"><span></span><span>Nenhuma página pronta ainda. A lista se atualiza sozinha.</span></div>'}</div>`;
   };
 
+  // ---- acompanhar a leitura: texto da página que está tocando ----
+  const player = $("#fl-player", root), textBox = $("#fl-text", root);
+  const prevBtn = $("#fl-prev", root), nextBtn = $("#fl-next", root);
+  let marks = [], active = -1, textFor = null;  // marks: frases com início em segundos
+
+  // Divide um trecho em frases e reparte o tempo dele pelo tamanho de cada uma.
+  // Uma frase termina em . ! ? ou … seguido de maiúscula, aspas ou travessão
+  // ("Mas ... que fazes aqui?" continua sendo uma frase só).
+  const sentences = (text) => {
+    const out = [], re = /[.!?…]+["'”»)\]]*\s+(?=[A-ZÀ-ÖØ-Þ"“«(\-–—])/g;
+    let last = 0, m;
+    while ((m = re.exec(text))) { out.push(text.slice(last, re.lastIndex)); last = re.lastIndex; }
+    out.push(text.slice(last));
+    return out.filter((t) => t.trim());
+  };
+  const buildMarks = (chunks) => {
+    const out = [];
+    for (const c of chunks) {
+      const parts = sentences(c.text);
+      const weights = parts.map((t) => t.trim().length + 12);  // +12: a pausa no fim de cada frase
+      const total = weights.reduce((a, b) => a + b, 0) || 1;
+      let t = c.start;
+      parts.forEach((txt, i) => {
+        out.push({ start: t, text: txt, page: c.page, chunk: c });
+        t += ((c.end - c.start) * weights[i]) / total;
+      });
+    }
+    return out;
+  };
+
+  const findMark = (t) => {
+    let lo = 0, hi = marks.length - 1, ans = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (marks[mid].start <= t + 0.05) { ans = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    return ans;
+  };
+
+  const highlight = (scroll = true) => {
+    if (!marks.length) return;
+    const i = findMark(audio.currentTime);
+    if (i === active) return;
+    textBox.querySelector(".s.active")?.classList.remove("active");
+    active = i;
+    const el = textBox.querySelector(`[data-m="${i}"]`);
+    if (!el) return;
+    el.classList.add("active");
+    if (scroll && !player.classList.contains("text-off")) {
+      textBox.scrollTop = el.offsetTop - textBox.offsetTop - textBox.clientHeight / 3;
+    }
+  };
+
+  const loadText = async (name) => {
+    textFor = name; marks = []; active = -1;
+    textBox.innerHTML = '<p class="mp-empty">Carregando o texto…</p>';
+    try {
+      const r = await api(`/api/documents/${id}/text?file=${encodeURIComponent(name)}`);
+      if (textFor !== name) return;
+      marks = buildMarks(r.chunks);
+      let html = "", n = 0, lastPage = null;
+      for (const c of r.chunks) {
+        const multi = (indexOf(name) >= 0 && data.files[indexOf(name)].pages.length > 1);
+        if (multi && c.page !== lastPage) html += `<span class="pg">Página ${c.page}</span>`;
+        lastPage = c.page;
+        const spans = marks.filter((m) => m.chunk === c).map(() => {
+          const m = marks[n];
+          return `<span class="s" data-m="${n++}">${esc(m.text)}</span>`;
+        });
+        html += `<p>${spans.join("")}</p>`;
+      }
+      textBox.innerHTML = html || '<p class="mp-empty">Esta página não tem texto.</p>';
+      textBox.scrollTop = 0;
+      highlight();
+    } catch {
+      if (textFor === name) textBox.innerHTML = '<p class="mp-empty">O texto desta página não está disponível.</p>';
+    }
+  };
+
+  textBox.addEventListener("click", (ev) => {
+    const s = ev.target.closest("[data-m]");
+    if (!s) return;
+    audio.currentTime = marks[Number(s.dataset.m)].start;
+    highlight(false);
+    audio.play();
+  });
+  audio.addEventListener("timeupdate", () => highlight());
+  audio.addEventListener("seeked", () => highlight());
+
+  const setPlayerOpen = (open) => {
+    player.hidden = !open;
+    root.classList.toggle("with-player", open);
+  };
+  const textOff = localStorage.getItem("filesText") === "off";
+  player.classList.toggle("text-off", textOff);
+  root.classList.toggle("text-off", textOff);
+  $("#fl-toggle", root).addEventListener("click", () => {
+    const off = player.classList.toggle("text-off");
+    root.classList.toggle("text-off", off);
+    localStorage.setItem("filesText", off ? "off" : "on");
+    if (!off) { active = -1; highlight(); }
+  });
+
+  const updateNav = () => {
+    const i = data && current ? indexOf(current) : -1;
+    prevBtn.disabled = i < 0;  // na primeira página, ⏮ volta ao começo dela
+    nextBtn.disabled = i < 0 || i >= data.files.length - 1;
+  };
+
   const play = (name) => {
     if (!name || indexOf(name) < 0) return;
     if (name === current && !audio.paused) { audio.pause(); return; }
@@ -551,10 +660,27 @@ function renderFiles(id) {
       current = name;
       audio.src = `/api/documents/${id}/files/${encodeURIComponent(name)}`;
       $("#fl-now", root).textContent = name;
-      $("#fl-player", root).hidden = false;
+      setPlayerOpen(true);
+      loadText(name);
     }
+    updateNav();
     audio.play();
   };
+
+  // ⏭ vai para o próximo áudio pronto (pula as páginas que ainda estão convertendo).
+  // ⏮ volta ao começo da página; se ela acabou de começar, vai para a anterior.
+  const playNext = () => { const f = data.files[indexOf(current) + 1]; if (f) play(f.file); };
+  const playPrev = () => {
+    const i = indexOf(current);
+    if (audio.currentTime > 3 || i <= 0) { audio.currentTime = 0; audio.play(); return; }
+    play(data.files[i - 1].file);
+  };
+  prevBtn.addEventListener("click", playPrev);
+  nextBtn.addEventListener("click", playNext);
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.setActionHandler("nexttrack", () => playNext());
+    navigator.mediaSession.setActionHandler("previoustrack", () => playPrev());
+  }
 
   tree.addEventListener("click", (ev) => {
     if (ev.target.closest(".tree-folder")) { ev.target.closest(".tree-folder").classList.toggle("closed"); return; }
@@ -611,6 +737,7 @@ function renderFiles(id) {
         : reportHtml(doc.report);
       showPath(files);
       draw();
+      updateNav();
       if (working) timer = setTimeout(load, 4000);
     } catch {
       if (!data) location.hash = "#/biblioteca";
@@ -619,7 +746,13 @@ function renderFiles(id) {
   };
   load();
 
-  return () => { stopped = true; clearTimeout(timer); audio.pause(); audio.removeAttribute("src"); };
+  return () => {
+    stopped = true; clearTimeout(timer); audio.pause(); audio.removeAttribute("src");
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.setActionHandler("nexttrack", null);
+      navigator.mediaSession.setActionHandler("previoustrack", null);
+    }
+  };
 }
 
 function renderReader(id) {
