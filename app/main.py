@@ -168,7 +168,7 @@ async def reconvert(doc_id: str, voice: str | None = None):
     def clean() -> None:
         remove_audio_dir(doc_id, info)
         for item in folder.iterdir():
-            if item.name == "source.pdf":
+            if item.name in KEEP_ON_RECONVERT:
                 continue
             shutil.rmtree(item, ignore_errors=True) if item.is_dir() else item.unlink(missing_ok=True)
 
@@ -176,6 +176,85 @@ async def reconvert(doc_id: str, voice: str | None = None):
     db.update(doc_id, status="queued", error=None, chunks_done=0, chunks_total=0, note="",
               duration=0, file_size=0, page_marks=[], report=None, pages_ready=0, voice=voice or doc["voice"])
     converter.enqueue(doc_id)
+    return _public(db.get(doc_id))
+
+
+# ---------------------------------------------------------------- capa
+# A capa escolhida pelo usuário fica em library/<id>/cover, junto do PDF, e só sai
+# de lá se ele remover a capa ou excluir o livro. Sem capa própria, a biblioteca
+# mostra a página 1 do PDF (miniatura guardada em page1.png).
+COVER_FILE, PAGE1_FILE = "cover", "page1.png"
+KEEP_ON_RECONVERT = {"source.pdf", COVER_FILE, PAGE1_FILE}
+COVER_MAX_BYTES = 15 * 1024 * 1024
+_IMAGE_TYPES = (
+    (b"\x89PNG\r\n\x1a\n", "image/png"), (b"\xff\xd8\xff", "image/jpeg"),
+    (b"GIF87a", "image/gif"), (b"GIF89a", "image/gif"),
+)
+
+
+def _image_type(head: bytes) -> str | None:
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "image/webp"
+    return next((mime for magic, mime in _IMAGE_TYPES if head.startswith(magic)), None)
+
+
+def _render_page1(doc_id: str) -> Path | None:
+    import pymupdf
+
+    target = doc_dir(doc_id) / PAGE1_FILE
+    if target.exists():
+        return target
+    try:
+        with pymupdf.open(doc_dir(doc_id) / "source.pdf") as pdf_doc:
+            if not pdf_doc.page_count:
+                return None
+            page = pdf_doc[0]
+            zoom = 600 / (page.rect.width or 1)
+            png = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False).tobytes("png")
+    except Exception:
+        return None
+    tmp = target.with_suffix(".part")
+    tmp.write_bytes(png)
+    tmp.replace(target)
+    return target
+
+
+@app.get("/api/documents/{doc_id}/cover")
+async def get_cover(doc_id: str):
+    doc = _require(doc_id)
+    custom = doc_dir(doc_id) / COVER_FILE
+    headers = {"Cache-Control": "max-age=31536000"}  # a URL muda (?v=) quando a capa muda
+    if doc.get("cover") and custom.exists():
+        return FileResponse(custom, media_type=doc["cover"], headers=headers)
+    page1 = await asyncio.to_thread(_render_page1, doc_id)
+    if page1 is None:
+        raise HTTPException(404, "Este PDF não tem página para mostrar")
+    return FileResponse(page1, media_type="image/png", headers=headers)
+
+
+@app.post("/api/documents/{doc_id}/cover")
+async def set_cover(doc_id: str, file: UploadFile = File(...)):
+    doc = _require(doc_id)
+    data = await file.read(COVER_MAX_BYTES + 1)
+    if len(data) > COVER_MAX_BYTES:
+        raise HTTPException(413, "A imagem passa de 15 MB. Escolha uma imagem menor.")
+    mime = _image_type(data[:16])
+    if mime is None:
+        raise HTTPException(400, "Use uma imagem JPG, PNG, WebP ou GIF.")
+    target = doc_dir(doc_id) / COVER_FILE
+    tmp = target.with_suffix(".part")
+    await asyncio.to_thread(tmp.write_bytes, data)
+    tmp.replace(target)
+    db.update(doc_id, cover=mime, cover_v=(doc.get("cover_v") or 0) + 1)
+    return _public(db.get(doc_id))
+
+
+@app.delete("/api/documents/{doc_id}/cover")
+def delete_cover(doc_id: str):
+    """Tira a capa escolhida; a biblioteca volta a mostrar a página 1 do PDF."""
+    doc = _require(doc_id)
+    (doc_dir(doc_id) / COVER_FILE).unlink(missing_ok=True)
+    db.update(doc_id, cover=None, cover_v=(doc.get("cover_v") or 0) + 1)
     return _public(db.get(doc_id))
 
 

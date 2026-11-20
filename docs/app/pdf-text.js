@@ -98,6 +98,26 @@ function pageBlocks(lines) {
   return blocks;
 }
 
+/** Desenha a página 1 do PDF (miniatura em JPEG) para servir de capa na biblioteca. */
+export async function renderFirstPage(data, width = 600) {
+  const pdf = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
+  try {
+    if (!pdf.numPages) return null;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  } finally {
+    pdf.destroy();
+  }
+}
+
 /**
  * Lê o PDF inteiro e devolve os segmentos de fala:
  * [{ t: "frase", p: página, s: true se começa parágrafo }]

@@ -166,7 +166,19 @@ select:hover, input[type=search]:hover { border-color: var(--ink-soft); }
 .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 .lib-card { background: var(--paper); border: 1.5px solid var(--line); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
 .lib-card:hover { border-color: var(--ink-soft); }
-.lib-card .cover { aspect-ratio: auto; height: 120px; border-radius: 0; font-size: 1rem; }
+.lib-card .cover { aspect-ratio: auto; height: 190px; border-radius: 0; font-size: 1rem; }
+/* Capa com imagem (página 1 do PDF ou imagem do usuário) e título numa faixa sólida */
+.cover { position: relative; overflow: hidden; }
+.cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; background: #fff; }
+.cover-title { position: relative; }
+.cover.has-img .cover-title { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px; background: rgba(14, 14, 20, .84); color: #fff; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.cover-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 1; }
+.cover-tools button { background: var(--paper); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 6px; padding: 4px 9px; font: 600 .8rem var(--body, inherit); cursor: pointer; }
+.cover-tools button:hover { background: var(--ink); color: var(--paper); }
+@media (hover: hover) {
+  .cover-tools { opacity: 0; transition: opacity .15s; }
+  .lib-card:hover .cover-tools, .cover-tools:focus-within { opacity: 1; }
+}
 .lib-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .lib-body h3 { font-size: 1.05rem; margin: 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .lib-meta { font-size: .85rem; color: var(--ink-soft); }

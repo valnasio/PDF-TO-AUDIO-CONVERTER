@@ -57,6 +57,11 @@
   </requires>
 
   <releases>
+    <release version="2.8.0" date="2026-11-20">
+      <description>
+        <p>A biblioteca mostra a página 1 de cada PDF como capa, com o título numa faixa escura legível. Você também pode escolher uma imagem sua como capa; ela fica guardada junto do livro até você trocar ou remover.</p>
+      </description>
+    </release>
     <release version="2.7.0" date="2026-11-20">
       <description>
         <p>Nos áudios por página, botões para ir à página anterior e à próxima. Enquanto o áudio toca, o texto da página aparece na tela com a frase lida em destaque; um clique na frase leva o áudio até ela.</p>

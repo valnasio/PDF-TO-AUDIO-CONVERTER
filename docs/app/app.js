@@ -1,6 +1,6 @@
 // Leitor de PDF em Áudio: versão para navegador (roda toda no aparelho).
-import { extractSegments } from "./pdf-text.js?v=2.6.1";
-import { NEURAL_ID, NEURAL_VOICES, neuralSupported, prepareNeural, splitForQuickStart, synthNeural, warmNeural } from "./neural.js?v=2.6.1";
+import { extractSegments, renderFirstPage } from "./pdf-text.js?v=2.7.1";
+import { NEURAL_ID, NEURAL_VOICES, neuralSupported, prepareNeural, splitForQuickStart, synthNeural, warmNeural } from "./neural.js?v=2.7.1";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");
@@ -32,9 +32,10 @@ const store = {
   put: (doc) => tx("docs", "readwrite", (s) => s.put(doc)),
   file: (id) => tx("files", "readonly", (s) => s.get(id)),
   putFile: (id, blob) => tx("files", "readwrite", (s) => s.put(blob, id)),
+  delFile: (id) => tx("files", "readwrite", (s) => s.delete(id)),
   remove: async (id) => {
     await tx("docs", "readwrite", (s) => s.delete(id));
-    await tx("files", "readwrite", (s) => s.delete(id));
+    for (const key of [id, `cover:${id}`, `page1:${id}`]) await tx("files", "readwrite", (s) => s.delete(key));
   },
 };
 
@@ -51,6 +52,35 @@ function coverStyle(title) {
   let h = 0;
   for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) % 9973;
   return `background: ${COVER_COLORS[h % COVER_COLORS.length]};`;
+}
+
+// Capa do livro: a imagem escolhida pelo usuário ou, sem ela, a página 1 do PDF.
+// As duas ficam guardadas neste navegador junto do PDF ("cover:id" e "page1:id").
+async function coverBlob(doc) {
+  if (doc.cover) {
+    const own = await store.file(`cover:${doc.id}`);
+    if (own) return own;
+  }
+  let page1 = await store.file(`page1:${doc.id}`);
+  if (!page1) {  // livros guardados antes desta versão: desenha agora e guarda
+    const pdf = await store.file(doc.id);
+    if (!pdf) return null;
+    try { page1 = await renderFirstPage(new Uint8Array(await pdf.arrayBuffer())); } catch { return null; }
+    if (page1) await store.putFile(`page1:${doc.id}`, page1);
+  }
+  return page1 || null;
+}
+// O título fica numa faixa escura por cima da imagem, legível em qualquer capa.
+// Sem imagem, sobra a cor chapada de antes.
+function coverHtml(d, url, tools = false) {
+  return `<div class="cover ${url ? "has-img" : ""}" style="${coverStyle(d.title)}">
+    ${url ? `<img src="${url}" alt="" decoding="async" />` : ""}
+    <span class="cover-title">${esc(d.title)}</span>
+    ${tools ? `<div class="cover-tools">
+      <button type="button" data-cover-pick="${d.id}" title="Usar uma imagem sua como capa">🖼 Capa</button>
+      ${d.cover ? `<button type="button" data-cover-reset="${d.id}" title="Tirar a capa e voltar a mostrar a página 1 do PDF">↺</button>` : ""}
+    </div>` : ""}
+  </div>`;
 }
 
 // Modo claro / noturno (mesma escolha da página de download).
@@ -146,6 +176,10 @@ function renderUpload() {
       const id = crypto.randomUUID?.() || String(Date.now());
       const name = file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim();
       await store.putFile(id, new Blob([buf], { type: "application/pdf" }));
+      try {
+        const page1 = await renderFirstPage(new Uint8Array(buf.slice(0)));
+        if (page1) await store.putFile(`page1:${id}`, page1);
+      } catch { /* sem miniatura: a biblioteca usa a cor */ }
       await store.put({
         id, title: title || name, filename: file.name, pages, segments, pos: 0,
         chars: segments.reduce((n, s) => n + s.t.length, 0), createdAt: Date.now(),
@@ -171,6 +205,7 @@ function renderPlayer(id) {
   const status = $("#pl-status", root), hint = $("#pl-voice-hint", root);
   let doc = null, voices = [], idx = 0, playing = false, token = 0, renderedPage = 0, utter = null;
   let pageStart = new Map(), charsBefore = [];
+  let coverUrl = null;
 
   const browserTts = "speechSynthesis" in window;
   const canNeural = neuralSupported();
@@ -395,9 +430,18 @@ function renderPlayer(id) {
 
     $("#pl-title", root).textContent = doc.title;
     $("#pl-meta", root).textContent = `${doc.pages} páginas · ≈ ${fmtDuration(doc.chars / CHARS_PER_SECOND)} de leitura`;
-    const cover = $("#pl-cover", root);
-    cover.setAttribute("style", coverStyle(doc.title));
-    cover.textContent = doc.title;
+    const showCover = (url) => {
+      const holder = document.createElement("div");
+      holder.innerHTML = coverHtml(doc, url);
+      holder.firstElementChild.id = "pl-cover";
+      $("#pl-cover", root).replaceWith(holder.firstElementChild);
+    };
+    showCover(null);
+    coverBlob(doc).then((blob) => {
+      if (!blob || !root.isConnected) return;
+      coverUrl = URL.createObjectURL(blob);
+      showCover(coverUrl);
+    });
     $("#pl-read", root).href = `#/ler/${id}`;
     seek.max = doc.segments.length - 1;
     pageSel.innerHTML = [...pageStart.keys()].map((p) => `<option value="${p}">Página ${p}</option>`).join("");
@@ -481,6 +525,7 @@ function renderPlayer(id) {
 
   return () => {
     stop();
+    if (coverUrl) URL.revokeObjectURL(coverUrl);
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("pagehide", onHide);
   };
@@ -491,12 +536,13 @@ function renderLibrary() {
   const root = mount("#tpl-library");
   const grid = $("#lib-grid", root), search = $("#lib-search", root);
   let docs = [];
+  const urls = new Map();  // id → endereço da imagem da capa
 
   const card = (d) => {
     const pct = Math.floor(((d.pos || 0) / Math.max(1, d.segments.length - 1)) * 100);
     return `
       <article class="lib-card">
-        <div class="cover" style="${coverStyle(d.title)}">${esc(d.title)}</div>
+        ${coverHtml(d, urls.get(d.id), true)}
         <div class="lib-body">
           <span class="badge ready">${pct ? `${pct}% ouvido` : "Novo"}</span>
           <h3 title="${esc(d.title)}">${esc(d.title)}</h3>
@@ -515,9 +561,49 @@ function renderLibrary() {
     grid.innerHTML = docs.filter((d) => !q || d.title.toLowerCase().includes(q)).map(card).join("");
     $("#lib-empty", root).hidden = docs.length > 0;
   };
-  store.all().then((all) => { docs = all.sort((a, b) => b.createdAt - a.createdAt); draw(); });
+  const loadCover = async (d) => {
+    const blob = await coverBlob(d);
+    if (urls.has(d.id)) URL.revokeObjectURL(urls.get(d.id));
+    if (blob) urls.set(d.id, URL.createObjectURL(blob)); else urls.delete(d.id);
+  };
+  store.all().then(async (all) => {
+    docs = all.sort((a, b) => b.createdAt - a.createdAt);
+    draw();
+    for (const d of docs) { await loadCover(d); draw(); }
+  });
+
+  // Capa própria: fica guardada junto do livro até o usuário trocar ou remover.
+  const picker = $("#lib-cover-file", root);
+  let pickFor = null;
+  const saveDoc = async (doc) => {
+    await store.put(doc);
+    docs = docs.map((x) => (x.id === doc.id ? doc : x));
+    await loadCover(doc);
+    draw();
+  };
+  picker.addEventListener("change", async () => {
+    const file = picker.files[0];
+    picker.value = "";
+    const doc = docs.find((x) => x.id === pickFor);
+    if (!file || !doc) return;
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { alert("Use uma imagem JPG, PNG, WebP ou GIF."); return; }
+    if (file.size > 15 * 1024 * 1024) { alert("A imagem passa de 15 MB. Escolha uma imagem menor."); return; }
+    await store.putFile(`cover:${doc.id}`, new Blob([await file.arrayBuffer()], { type: file.type }));
+    await saveDoc({ ...doc, cover: true });
+  });
+
   search.addEventListener("input", draw);
   grid.addEventListener("click", async (ev) => {
+    const pick = ev.target.closest("[data-cover-pick]");
+    if (pick) { pickFor = pick.dataset.coverPick; picker.click(); return; }
+    const reset = ev.target.closest("[data-cover-reset]");
+    if (reset) {
+      const doc = docs.find((x) => x.id === reset.dataset.coverReset);
+      if (!doc || !confirm("Tirar esta capa? A biblioteca volta a mostrar a página 1 do PDF.")) return;
+      await store.delFile(`cover:${doc.id}`);
+      await saveDoc({ ...doc, cover: false });
+      return;
+    }
     const b = ev.target.closest("[data-del]");
     if (!b) return;
     const d = docs.find((x) => x.id === b.dataset.del);
@@ -526,6 +612,7 @@ function renderLibrary() {
     docs = docs.filter((x) => x.id !== d.id);
     draw();
   });
+  return () => { for (const u of urls.values()) URL.revokeObjectURL(u); };
 }
 
 // ------------------------------------------------------------ tela: leitor PDF

@@ -35,6 +35,27 @@ function coverStyle(title) {
   return `background: ${COVER_COLORS[h % COVER_COLORS.length]};`;
 }
 
+// Capa do livro: a imagem escolhida pelo usuário ou, sem ela, a página 1 do PDF.
+// O título fica numa faixa escura por cima, legível em qualquer imagem. Se a
+// imagem não carregar, sobra a cor chapada de antes (ver coverFallback).
+function coverHtml(d, tools = false) {
+  return `<div class="cover has-img" style="${coverStyle(d.title)}">
+    <img src="/api/documents/${d.id}/cover?v=${d.cover_v || 0}" alt="" loading="lazy" decoding="async" />
+    <span class="cover-title">${esc(d.title)}</span>
+    ${tools ? `<div class="cover-tools">
+      <button type="button" data-cover-pick="${d.id}" title="Usar uma imagem sua como capa">🖼 Capa</button>
+      ${d.cover ? `<button type="button" data-cover-reset="${d.id}" title="Tirar a capa e voltar a mostrar a página 1 do PDF">↺</button>` : ""}
+    </div>` : ""}
+  </div>`;
+}
+function coverFallback(root) {
+  root.addEventListener("error", (ev) => {
+    if (ev.target.tagName !== "IMG" || !ev.target.parentElement?.classList.contains("cover")) return;
+    ev.target.parentElement.classList.remove("has-img");
+    ev.target.remove();
+  }, true);
+}
+
 // Modo claro / noturno
 function setupThemeToggle() {
   const btn = document.getElementById("theme-toggle");
@@ -363,9 +384,12 @@ function renderPlayer(id) {
     duration = doc.duration;
     $("#pl-title", root).textContent = doc.title;
     $("#pl-meta", root).textContent = `${doc.pages} páginas · ${fmtDuration(doc.duration)} · ${fmtSize(doc.file_size)}`;
-    const cover = $("#pl-cover", root);
-    cover.setAttribute("style", coverStyle(doc.title));
-    cover.textContent = doc.title;
+    const holder = document.createElement("div");
+    holder.innerHTML = coverHtml(doc);
+    const cover = holder.firstElementChild;
+    cover.id = "pl-cover";
+    coverFallback(cover);
+    $("#pl-cover", root).replaceWith(cover);
     $("#pl-dur", root).textContent = fmtTime(duration);
     seek.max = Math.ceil(duration * 10);
     $("#pl-read", root).href = `#/ler/${id}`;
@@ -456,7 +480,7 @@ function renderLibrary() {
     const listened = d.status === "ready" && pos > 0 ? `<div class="bar"><div class="fill" style="width:${(pos / d.duration) * 100}%"></div></div>` : "";
     return `
       <article class="lib-card" data-id="${d.id}">
-        <div class="cover" style="${coverStyle(d.title)}">${esc(d.title)}</div>
+        ${coverHtml(d, true)}
         <div class="lib-body">
           <span class="badge ${badge}">${STATUS_LABEL[d.status]}</span>
           <h3 title="${esc(d.title)}">${esc(d.title)}</h3>
@@ -488,8 +512,32 @@ function renderLibrary() {
     if (docs.some((d) => isWorking(d.status))) timer = setTimeout(load, 2500);
   };
 
+  // Capa própria: fica guardada junto do livro até o usuário trocar ou remover.
+  const picker = $("#lib-cover-file", root);
+  let pickFor = null;
+  const replaceDoc = (doc) => { docs = docs.map((x) => (x.id === doc.id ? doc : x)); draw(); };
+  picker.addEventListener("change", async () => {
+    const file = picker.files[0];
+    picker.value = "";
+    if (!file || !pickFor) return;
+    const form = new FormData();
+    form.append("file", file);
+    try { replaceDoc(await api(`/api/documents/${pickFor}/cover`, { method: "POST", body: form })); }
+    catch (e) { alert(e.message); }
+  });
+  coverFallback(grid);
+
   search.addEventListener("input", draw);
   grid.addEventListener("click", async (ev) => {
+    const pick = ev.target.closest("[data-cover-pick]");
+    if (pick) { pickFor = pick.dataset.coverPick; picker.click(); return; }
+    const reset = ev.target.closest("[data-cover-reset]");
+    if (reset) {
+      if (!confirm("Tirar esta capa? A biblioteca volta a mostrar a página 1 do PDF.")) return;
+      try { replaceDoc(await api(`/api/documents/${reset.dataset.coverReset}/cover`, { method: "DELETE" })); }
+      catch (e) { alert(e.message); }
+      return;
+    }
     const b = ev.target.closest("[data-del]");
     if (!b) return;
     const d = docs.find((x) => x.id === b.dataset.del);

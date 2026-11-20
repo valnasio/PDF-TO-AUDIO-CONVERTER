@@ -37,7 +37,8 @@ _conn.executescript(
 )
 # Colunas adicionadas em versões novas (bancos antigos são atualizados aqui).
 _existing = {r[1] for r in _conn.execute("PRAGMA table_info(documents)")}
-for _col, _type in (("folder", "TEXT"), ("report", "TEXT"), ("pages_ready", "INTEGER DEFAULT 0"), ("note", "TEXT")):
+for _col, _type in (("folder", "TEXT"), ("report", "TEXT"), ("pages_ready", "INTEGER DEFAULT 0"), ("note", "TEXT"),
+                     ("cover", "TEXT"), ("cover_v", "INTEGER DEFAULT 0")):
     if _col not in _existing:
         _conn.execute(f"ALTER TABLE documents ADD COLUMN {_col} {_type}")
 _conn.commit()

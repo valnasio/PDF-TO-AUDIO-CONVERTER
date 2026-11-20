@@ -6,7 +6,7 @@
   <title>Leitor de PDF em Áudio no navegador</title>
   <meta name="description" content="Ouça seus PDFs em voz alta direto no navegador. Gratuito, sem instalar e sem enviar seus arquivos para lugar nenhum." />
   <link rel="icon" href="../img/icon.png" />
-  <link rel="stylesheet" href="styles.css?v=2.6.1" />
+  <link rel="stylesheet" href="styles.css?v=2.7.1" />
   <script>
     // Tema antes de desenhar a tela (compartilhado com a página de download).
     document.documentElement.dataset.theme = localStorage.getItem("theme")
@@ -138,6 +138,7 @@
       </div>
       <p class="muted small">Seus PDFs ficam guardados neste navegador, neste dispositivo.</p>
       <div class="lib-grid" id="lib-grid"></div>
+      <input type="file" id="lib-cover-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
       <div class="empty" id="lib-empty" hidden>
         <div class="drop-icon">📚</div>
         <p>Nenhum PDF ainda.</p>
@@ -159,6 +160,6 @@
     </section>
   </template>
 
-  <script type="module" src="app.js?v=2.6.1"></script>
+  <script type="module" src="app.js?v=2.7.1"></script>
 </body>
 </html>

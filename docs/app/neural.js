@@ -15,7 +15,7 @@ export const neuralSupported = () =>
 let pool = null;
 
 function makeWorker() {
-  const w = new Worker(new URL("./tts-worker.js?v=2.6.1", import.meta.url), { type: "module" });
+  const w = new Worker(new URL("./tts-worker.js?v=2.7.1", import.meta.url), { type: "module" });
   let n = 0;
   const pending = new Map();
   w.onmessage = (e) => {

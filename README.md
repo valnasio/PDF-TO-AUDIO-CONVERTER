@@ -79,7 +79,7 @@ O projeto parou aí. Anos depois, voltei a ele com ferramentas de IA para resolv
   </tr>
   <tr>
     <td><b>Player.</b> Velocidade de 0,75x a 2x, ir para uma página, texto destacado conforme a voz lê e download do MP3.</td>
-    <td><b>Biblioteca.</b> Seus livros com busca e progresso de escuta. Cada livro abre o player, a pasta de áudios ou o PDF.</td>
+    <td><b>Biblioteca.</b> Seus livros com busca e progresso de escuta. A capa é a página 1 do PDF ou uma imagem escolhida por você. Cada livro abre o player, a pasta de áudios ou o PDF.</td>
   </tr>
 </table>
 
