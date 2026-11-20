@@ -235,5 +235,15 @@ select:hover, input[type=search]:hover { border-color: var(--ink-soft); }
 }
 
 /* Áudios prontos durante a conversão e local da pasta */
-#conv-listen { margin-bottom: 18px; }
+
 .files-path { margin: -8px 0 16px; font-size: .88rem; color: var(--ink-soft); font-family: Consolas, "Cascadia Mono", monospace; overflow-wrap: anywhere; }
+
+/* Conversão: aviso, ações e cancelamento */
+.conv-note { margin: 0 0 16px; padding: 12px 14px; border-radius: 6px; background: var(--mist); box-shadow: inset 3px 0 0 var(--warn); color: var(--ink); font-size: .92rem; }
+.conv-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.conv-actions:not(:has(:not([hidden]))) { display: none; }
+
+/* Grupos de vozes: no computador / Microsoft */
+.voice-groups { display: grid; gap: 18px; }
+.voice-group h4 { margin: 0 0 2px; font: 700 1rem var(--display); }
+.voice-group p { margin: 0 0 8px; }

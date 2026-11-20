@@ -195,6 +195,7 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--browser", action="store_true", help="usar o navegador em vez da janela")
+    parser.add_argument("--server", action="store_true", help="só o servidor, sem janela nem navegador (testes)")
     args = parser.parse_args()
 
     url = f"http://{'127.0.0.1' if args.host == '0.0.0.0' else args.host}:{args.port}"
@@ -211,6 +212,13 @@ def main() -> None:
             server = start_server(args.host, args.port)
     else:
         server = start_server(args.host, args.port)
+
+    if args.server:
+        if server is not None:
+            wait_until_idle(url, auto_exit=False)
+            server.should_exit = True
+            time.sleep(1)
+        os._exit(0)
 
     # Janela nativa: WebView2 no Windows, GTK/WebKitGTK no Linux.
     if args.browser:

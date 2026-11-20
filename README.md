@@ -101,7 +101,7 @@ Escolha a versão que preferir:
 |---|---|---|---|
 | **Download** | [`LeitorPDF.exe`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/LeitorPDF.exe) (~36 MB) | [`.deb`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf_amd64.deb) · [`.rpm`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.x86_64.rpm) · [`.flatpak`](https://github.com/valnasio/PDF-TO-AUDIO-CONVERTER/releases/latest/download/leitor-pdf.flatpak) (~40 MB) | [Abrir no navegador](https://valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app/) |
 | **Gera MP3** | ✅ | ✅ | ❌ lê em voz alta na hora |
-| **Vozes** | Neurais (Francisca, Antônio, Thalita…) | Neurais | Naturais no aparelho (Faber, Cadu, Jeff), em qualquer navegador |
+| **Vozes** | No computador (Faber, Cadu, Jeff), sem limites e offline; ou Microsoft (Francisca, Antônio…), online | Mesmas do Windows | Naturais no aparelho (Faber, Cadu, Jeff), em qualquer navegador |
 | **Interface** | Janela própria | Janela própria | Navegador, inclusive no celular |
 | **Seus PDFs ficam** | No computador | No computador | No navegador (nada é enviado) |
 
@@ -156,9 +156,12 @@ Abra **[valnasio.github.io/PDF-TO-AUDIO-CONVERTER/app](https://valnasio.github.i
 
 ### Bom saber
 
-- Nas versões Windows e Linux, é preciso estar **conectado à internet durante a conversão**, porque as vozes são geradas online. Depois de convertido, o áudio pode ser ouvido sem internet.
+- **Vozes no computador (padrão): Faber, Cadu e Jeff.** Rodam no próprio computador, sem limite de páginas e sem internet (cada voz é baixada uma vez, 63 MB). Convertem cerca de 14 vezes mais rápido que o tempo de fala: um livro de 40 horas de áudio fica pronto em ~3 horas.
+- **Vozes Microsoft (Francisca, Antônio…):** qualidade um pouco maior, mas precisam de internet e o serviço pode limitar livros muito grandes. Se isso acontecer, o programa oferece refazer o livro com uma voz do computador.
 - **Os áudios ficam na sua pasta de música**, em `PDFAudioConvert`, com uma subpasta por livro: `Músicas\PDFAudioConvert` no Windows e `~/Música/PDFAudioConvert` no Linux (inclusive no Flatpak). O botão **Abrir pasta** leva direto até ela.
 - **Dá para ouvir durante a conversão:** cada página fica disponível assim que termina, sem esperar o livro inteiro.
+- **A conversão nunca para em silêncio:** se o serviço de voz da Microsoft ficar instável (comum em livros muito grandes), o programa avisa na tela, diminui o ritmo e tenta de novo sozinho. Se não conseguir por vários minutos, para com uma mensagem clara, e as páginas prontas continuam disponíveis.
+- **Cancelar e continuar:** dá para cancelar a conversão a qualquer momento e continuar depois, de onde parou.
 - Os dados internos do programa (biblioteca e PDFs) ficam em `%LOCALAPPDATA%\LeitorPDF` (Windows) ou `~/.local/share/LeitorPDF` (Linux).
 - Se o programa for fechado durante uma conversão, ela continua de onde parou na próxima vez que for aberto.
 
@@ -243,7 +246,11 @@ Os executáveis (`.exe`, `.deb`, `.rpm` e `.flatpak`) incluem estas bibliotecas,
 | Componente | Licença | Observação |
 |---|---|---|
 | [PyMuPDF](https://github.com/pymupdf/PyMuPDF) (leitura de PDF) | AGPL-3.0 | Quem distribuir os executáveis precisa disponibilizar o código-fonte completo, como este repositório já faz |
-| [edge-tts](https://github.com/rany2/edge-tts) (vozes) | LGPL-3.0 | |
+| [edge-tts](https://github.com/rany2/edge-tts) (vozes Microsoft) | LGPL-3.0 | |
+| [piper-tts](https://github.com/OHF-Voice/piper1-gpl) e eSpeak NG (vozes no computador) | GPL-3.0 | Mesmo caso: o código-fonte completo continua público |
+| Vozes Faber, Cadu e Jeff ([piper-voices](https://huggingface.co/rhasspy/piper-voices)) | Licenças das vozes (uso livre) | Baixadas na primeira vez que são usadas |
+| [lameenc](https://github.com/chrisstaite/lameenc) (MP3) | LGPL-3.0 | |
+| [ONNX Runtime](https://onnxruntime.ai), NumPy | MIT, BSD-3-Clause | |
 | FastAPI, Pydantic | MIT | |
 | Starlette, Uvicorn, pywebview | BSD-3-Clause | |
 | aiohttp, python-multipart | Apache-2.0 | |

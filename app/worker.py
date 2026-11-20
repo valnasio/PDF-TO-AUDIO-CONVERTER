@@ -27,7 +27,10 @@ from pathlib import Path
 from . import db
 from .config import LIBRARY_DIR, OUTPUT_ROOT, TTS_CONCURRENCY
 from .pdf_text import build_pages, extract_paragraphs, pdf_toc, slugify
-from .tts import MP3_BYTES_PER_SECOND, synthesize_to_file
+from .tts import (
+    MP3_BYTES_PER_SECOND, Hooks, ensure_local_voice, is_local, local_voice_ready,
+    synthesize_local_to_file, synthesize_to_file, voice_name,
+)
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +39,71 @@ PLAN_VERSION = 2
 
 class NoTextError(RuntimeError):
     pass
+
+
+class StallError(RuntimeError):
+    pass
+
+
+# Se nenhum trecho terminar neste tempo, a conversão para com erro claro em vez
+# de ficar parada em silêncio (cada trecho já tem prazo e ~8 min de paciência
+# com o serviço de voz, então 15 min sem avanço indica um problema real).
+STALL_LIMIT = 15 * 60
+
+
+class Pace(Hooks):
+    """Controla quantos trechos são pedidos ao mesmo tempo ao serviço de voz.
+
+    Quando o serviço falha (sobrecarga, 503, sem resposta), o número de pedidos
+    simultâneos cai pela metade; depois de 15 sucessos seguidos, sobe de um em um
+    até o máximo. Também registra o aviso que aparece na tela de conversão."""
+
+    def __init__(self, doc_id: str, maximum: int) -> None:
+        self.doc_id = doc_id
+        self.maximum = maximum
+        self.limit = maximum
+        self.active = 0
+        self.successes = 0
+        self.last_cut = 0.0
+        self.note = ""
+        self.cond = asyncio.Condition()
+
+    async def __aenter__(self):
+        async with self.cond:
+            await self.cond.wait_for(lambda: self.active < self.limit)
+            self.active += 1
+
+    async def __aexit__(self, *exc):
+        async with self.cond:
+            self.active -= 1
+            self.cond.notify_all()
+
+    def _set_note(self, note: str) -> None:
+        if note != self.note:
+            self.note = note
+            db.update(self.doc_id, note=note)
+
+    def trouble(self, message: str) -> None:
+        self.successes = 0
+        now = time.monotonic()
+        if now - self.last_cut > 20 and self.limit > 1:
+            self.limit = max(1, self.limit // 2)
+            self.last_cut = now
+            log.warning("Serviço de voz instável: reduzindo para %d pedidos simultâneos", self.limit)
+        self._set_note(message)
+
+    def ok(self) -> None:
+        self.successes += 1
+        if self.successes >= 15 and self.limit < self.maximum:
+            self.limit += 1
+            self.successes = 0
+            asyncio.get_running_loop().create_task(self._wake())
+        if self.note:
+            self._set_note("")
+
+    async def _wake(self) -> None:
+        async with self.cond:
+            self.cond.notify_all()
 
 
 def doc_dir(doc_id: str) -> Path:
@@ -126,7 +194,8 @@ class Converter:
     async def _run(self) -> None:
         while True:
             doc_id = await self.queue.get()
-            if not db.get(doc_id):  # removido enquanto estava na fila
+            doc = db.get(doc_id)
+            if not doc or doc["status"] != "queued":  # removido ou cancelado enquanto estava na fila
                 continue
             task = asyncio.create_task(self._process(doc_id))
             self.current[doc_id] = task
@@ -158,7 +227,20 @@ class Converter:
     async def _plan(self, doc_id: str, folder: Path, doc: dict) -> dict:
         plan = load_plan(doc_id)
         if plan:
-            return plan  # retomada: mantém a pasta escolhida quando a conversão começou
+            # retomada: mantém a pasta escolhida quando a conversão começou. Conversões
+            # iniciadas antes da pasta em Músicas, sem nenhuma página montada ainda,
+            # passam a salvar lá também.
+            if not plan.get("audio_root"):
+                old = doc_dir(doc_id) / plan["folder"]
+                if not old.exists() or not any(old.glob("*.mp3")):
+                    plan["folder"] = _unique_folder(plan["folder"])
+                    plan["audio_root"] = str(OUTPUT_ROOT)
+                    (OUTPUT_ROOT / plan["folder"]).mkdir(parents=True, exist_ok=True)
+                    tmp = folder / "plan.json.part"
+                    tmp.write_text(json.dumps(plan, ensure_ascii=False), encoding="utf-8")
+                    tmp.replace(folder / "plan.json")
+                    db.update(doc_id, folder=plan["folder"])
+            return plan
         # Conversão iniciada numa versão antiga do programa: recomeça no formato novo.
         for old in ("chunks.json", "parts", "plan.json"):
             target = folder / old
@@ -256,14 +338,41 @@ class Converter:
         pending = [c for c in chunks if not done_mark(c).exists()]
         done = len(chunks) - len(pending)
         db.update(doc_id, status="synthesizing", chunks_total=len(chunks), chunks_done=done,
-                  pages_ready=ready, error=None)
+                  pages_ready=ready, error=None, note="")
+
+        local = is_local(voice)
+        if local and pending and not local_voice_ready(voice):
+            # voz no computador: baixa uma única vez (63 MB), mostrando o progresso
+            name = voice_name(voice)
+            last_shown = [-1]
+
+            def progress(p: float) -> None:
+                pct = int(p * 100)
+                if pct != last_shown[0] and pct % 2 == 0:
+                    last_shown[0] = pct
+                    db.update(doc_id, note=f"Baixando a voz {name} (63 MB, só na primeira vez): {pct}%")
+
+            db.update(doc_id, note=f"Baixando a voz {name} (63 MB, só na primeira vez)…")
+            await asyncio.to_thread(ensure_local_voice, voice, progress)
+            db.update(doc_id, note="")
 
         it = iter(pending)
+        # Vozes no computador: 2 geradores (cada um já usa vários núcleos do
+        # processador). Microsoft: até TTS_CONCURRENCY pedidos, com ritmo adaptável.
+        parallel = 2 if local else TTS_CONCURRENCY
+        pace = Pace(doc_id, parallel)
+        last_progress = time.monotonic()
 
         async def worker() -> None:
-            nonlocal done, ready
+            nonlocal done, ready, last_progress
             for c in it:
-                result = await synthesize_to_file(c["text"], voice, str(parts / f"{c['index']:06d}.mp3"))
+                out = str(parts / f"{c['index']:06d}.mp3")
+                async with pace:
+                    if local:
+                        result = await asyncio.to_thread(synthesize_local_to_file, c["text"], voice, out)
+                    else:
+                        result = await synthesize_to_file(c["text"], voice, out, hooks=pace)
+                last_progress = time.monotonic()
                 done_mark(c).write_text(json.dumps(
                     {"coverage": result.coverage, "split": result.split, "size": result.size}
                 ))
@@ -275,14 +384,30 @@ class Converter:
                     ready += 1
                 db.update(doc_id, chunks_done=done, pages_ready=ready)
 
-        workers = [asyncio.create_task(worker()) for _ in range(TTS_CONCURRENCY)]
+        async def watchdog() -> None:
+            while True:
+                await asyncio.sleep(15)
+                if time.monotonic() - last_progress > STALL_LIMIT:
+                    raise StallError(
+                        f"A conversão parou de avançar há {STALL_LIMIT // 60} minutos (o serviço de voz não está "
+                        "respondendo). As páginas já convertidas continuam disponíveis; clique em Continuar "
+                        "para retomar de onde parou."
+                    )
+
+        workers = [asyncio.create_task(worker()) for _ in range(parallel)]
+        guard = asyncio.create_task(watchdog())
         try:
-            await asyncio.gather(*workers)
-        except BaseException:
-            for w in workers:
-                w.cancel()
-            await asyncio.gather(*workers, return_exceptions=True)
-            raise
+            waiting = {*workers, guard}
+            while not all(w.done() for w in workers):
+                finished, waiting = await asyncio.wait(waiting, return_when=asyncio.FIRST_COMPLETED)
+                for t in finished:
+                    if not t.cancelled() and t.exception():
+                        raise t.exception()
+        finally:
+            for t in [*workers, guard]:
+                t.cancel()
+            await asyncio.gather(*workers, guard, return_exceptions=True)
+            db.update(doc_id, note="")
 
     def _finalize(self, doc_id: str, folder: Path, plan: dict) -> None:
         db.update(doc_id, status="finalizing")

@@ -21,7 +21,7 @@
       <li>Biblioteca com player, leitura acompanhada e leitor de PDF</li>
       <li>Modo claro e noturno</li>
     </ul>
-    <p>É preciso estar conectado à internet durante a conversão, porque as vozes são geradas online.</p>
+    <p>As vozes Faber, Cadu e Jeff rodam no próprio computador, sem limite de páginas e sem internet depois de baixadas. Também há vozes Microsoft, online.</p>
   </description>
 
   <launchable type="desktop-id">io.github.valnasio.LeitorPDF.desktop</launchable>
@@ -57,6 +57,11 @@
   </requires>
 
   <releases>
+    <release version="2.6.0" date="2026-11-20">
+      <description>
+        <p>Vozes que rodam no próprio computador (Faber, Cadu e Jeff): sem limite de páginas e sem internet, agora o padrão. A conversão nunca mais fica parada em silêncio: avisos na tela, botão para cancelar e continuar depois, e as páginas prontas sempre disponíveis para ouvir.</p>
+      </description>
+    </release>
     <release version="2.5.0" date="2026-11-19">
       <description>
         <p>Ouça cada página assim que ela fica pronta, sem esperar o livro inteiro. Os áudios agora ficam na pasta Música/PDFAudioConvert.</p>

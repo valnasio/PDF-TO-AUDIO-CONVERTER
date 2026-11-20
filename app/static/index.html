@@ -43,7 +43,7 @@
 
       <div class="voices">
         <h3>Escolha a voz</h3>
-        <div class="voice-list" id="voice-list"></div>
+        <div class="voice-groups" id="voice-list"></div>
       </div>
 
       <button class="btn primary big" id="convert" disabled>Converter em áudio</button>
@@ -76,11 +76,16 @@
         <li data-step="finalizing">Montando o áudio</li>
         <li data-step="ready">Pronto</li>
       </ol>
-      <a class="btn primary" id="conv-listen" hidden></a>
+      <p class="conv-note" id="conv-note" hidden></p>
+      <div class="conv-actions">
+        <a class="btn primary" id="conv-listen" hidden></a>
+        <button type="button" class="btn danger" id="conv-cancel" hidden>✕ Cancelar conversão</button>
+      </div>
       <p class="muted small">Você pode sair desta tela: a conversão continua e o arquivo aparecerá na biblioteca.</p>
       <div class="error-box" id="conv-error" hidden>
         <p id="conv-error-msg"></p>
-        <button class="btn primary" id="conv-retry">Tentar novamente</button>
+        <button class="btn primary" id="conv-retry">Continuar de onde parou</button>
+        <button class="btn" id="conv-local" hidden>Converter com voz do computador (sem limites)</button>
       </div>
     </section>
   </template>

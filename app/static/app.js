@@ -56,7 +56,7 @@ setupThemeToggle();
 
 const STATUS_LABEL = {
   queued: "Na fila", extracting: "Lendo PDF", synthesizing: "Gerando áudio",
-  finalizing: "Finalizando", ready: "Pronto", error: "Erro",
+  finalizing: "Finalizando", ready: "Pronto", error: "Parou com erro", canceled: "Cancelado",
 };
 const isWorking = (s) => ["queued", "extracting", "synthesizing", "finalizing"].includes(s);
 
@@ -65,7 +65,7 @@ function progressOf(d) {
   if (d.status === "extracting") return d.pages ? 0.05 * (d.pages_done / d.pages) : 0;
   if (d.status === "synthesizing") return 0.05 + 0.9 * (d.chunks_total ? d.chunks_done / d.chunks_total : 0);
   if (d.status === "finalizing") return 0.97;
-  if (d.status === "error" && d.chunks_total) return 0.05 + 0.9 * (d.chunks_done / d.chunks_total);
+  if ((d.status === "error" || d.status === "canceled") && d.chunks_total) return 0.05 + 0.9 * (d.chunks_done / d.chunks_total);
   return 0;
 }
 
@@ -137,12 +137,26 @@ function renderUpload() {
 
   api("/api/voices").then(({ voices, default: def }) => {
     const list = $("#voice-list", root);
+    // a partir da v2.6 o padrão são as vozes do computador: aplica uma vez a quem já tinha escolhido outra
+    if (!localStorage.getItem("voiceDefaultLocal")) {
+      localStorage.setItem("voiceDefaultLocal", "1");
+      localStorage.removeItem("voice");
+    }
     voice = localStorage.getItem("voice") || def;
-    list.innerHTML = voices.map((v) => `
+    if (!voices.some((v) => v.id === voice)) voice = def;
+    const card = (v) => `
       <div class="voice ${v.id === voice ? "selected" : ""}" data-id="${v.id}">
         <div><strong>${esc(v.name)}</strong><small>${v.gender} · ${v.locale}</small></div>
-        <button type="button" title="Ouvir amostra">▶</button>
-      </div>`).join("");
+        <button type="button" title="${v.engine === "local" ? "Ouvir amostra (na primeira vez baixa a voz, 63 MB)" : "Ouvir amostra"}">▶</button>
+      </div>`;
+    const group = (engine, title, text) => `
+      <div class="voice-group">
+        <h4>${title}</h4><p class="muted small">${text}</p>
+        <div class="voice-list">${voices.filter((v) => v.engine === engine).map(card).join("")}</div>
+      </div>`;
+    list.innerHTML =
+      group("local", "No seu computador (recomendado)", "Sem limite de páginas e funcionam sem internet. Cada voz é baixada uma vez (63 MB). Ideal para livros grandes.") +
+      group("microsoft", "Microsoft (online)", "Qualidade um pouco maior, mas o serviço pode limitar livros muito grandes. Precisa de internet durante a conversão.");
     list.addEventListener("click", (ev) => {
       const card = ev.target.closest(".voice");
       if (!card) return;
@@ -206,7 +220,8 @@ function renderConverting(id) {
     synthesizing: "Gerando a narração com voz natural…",
     finalizing: "Juntando as partes do áudio…",
     ready: "Concluído!",
-    error: "Ocorreu um problema na conversão",
+    error: "A conversão parou",
+    canceled: "Conversão cancelada",
   }[d.status]);
 
   const eta = (d) => {
@@ -224,6 +239,8 @@ function renderConverting(id) {
     if (stopped) return;
     try {
       const d = await api(`/api/documents/${id}`);
+      const working = isWorking(d.status);
+      const halted = d.status === "error" || d.status === "canceled";
       $("#conv-title", root).textContent = d.title;
       $("#conv-phase", root).textContent = phaseText(d);
       const p = progressOf(d);
@@ -233,20 +250,38 @@ function renderConverting(id) {
         d.status === "extracting" && d.pages ? `Página ${d.pages_done} de ${d.pages}` :
         d.chunks_total ? `Trecho ${d.chunks_done} de ${d.chunks_total} · ${d.pages} páginas` : "";
       $("#conv-eta", root).textContent = eta(d);
+
+      // aviso: serviço de voz instável, ou nada avançou há algum tempo
+      const quiet = working ? Math.floor((Date.now() / 1000 - d.updated_at) / 60) : 0;
+      const note = $("#conv-note", root);
+      note.textContent = d.note
+        ? `${d.note} O programa continua tentando sozinho; se preferir, cancele e continue mais tarde.`
+        : quiet >= 2
+        ? `Sem avanço há ${quiet} min. O programa continua tentando; se nada mudar em até 15 min, ele para e avisa.`
+        : "";
+      note.hidden = !note.textContent;
+
       const listen = $("#conv-listen", root);
       listen.hidden = !(d.pages_ready > 0) || d.status === "ready";
       listen.href = `#/arquivos/${id}`;
       listen.textContent = `🎧 Ouvir as páginas já prontas (${d.pages_ready})`;
+      $("#conv-cancel", root).hidden = !working;
+
       const idx = order.indexOf(d.status);
       root.querySelectorAll("#conv-steps li").forEach((li) => {
         const i = order.indexOf(li.dataset.step);
         li.classList.toggle("done", idx > i || d.status === "ready");
         li.classList.toggle("current", idx === i && d.status !== "ready");
       });
-      root.classList.toggle("failed", d.status === "error");
-      $("#conv-error", root).hidden = d.status !== "error";
-      if (d.status === "error") {
-        $("#conv-error-msg", root).textContent = d.error || "Erro desconhecido.";
+      root.classList.toggle("failed", halted);
+      $("#conv-error", root).hidden = !halted;
+      if (halted) {
+        $("#conv-error-msg", root).textContent = d.status === "canceled"
+          ? "Você cancelou a conversão. As páginas já prontas continuam disponíveis, e dá para continuar de onde parou."
+          : d.error || "Erro desconhecido.";
+        $("#conv-retry", root).textContent = "Continuar de onde parou";
+        // voz Microsoft com problema: oferece refazer com uma voz do computador (sem limite de pedidos)
+        $("#conv-local", root).hidden = String(d.voice).startsWith("piper:");
         return;
       }
       if (d.status === "ready") {
@@ -260,8 +295,25 @@ function renderConverting(id) {
   };
 
   $("#conv-retry", root).addEventListener("click", async () => {
-    await api(`/api/documents/${id}/retry`, { method: "POST" });
+    try { await api(`/api/documents/${id}/retry`, { method: "POST" }); } catch (e) { alert(e.message); }
     samples.length = 0;
+    clearTimeout(timer);
+    tick();
+  });
+  $("#conv-local", root).addEventListener("click", async () => {
+    if (!confirm("Converter o livro de novo com a voz Faber, que roda no seu computador? Ela não tem limite de pedidos e funciona sem internet. O livro inteiro é refeito com a voz nova, para não misturar vozes.")) return;
+    try {
+      await api(`/api/documents/${id}/reconvert?voice=${encodeURIComponent("piper:pt_BR-faber-medium")}`, { method: "POST" });
+      localStorage.setItem("voice", "piper:pt_BR-faber-medium");
+    } catch (e) { alert(e.message); }
+    samples.length = 0;
+    clearTimeout(timer);
+    tick();
+  });
+  $("#conv-cancel", root).addEventListener("click", async () => {
+    if (!confirm("Cancelar a conversão? As páginas já prontas continuam disponíveis e você pode continuar depois, de onde parou.")) return;
+    try { await api(`/api/documents/${id}/cancel`, { method: "POST" }); } catch (e) { alert(e.message); }
+    clearTimeout(timer);
     tick();
   });
 
@@ -396,7 +448,7 @@ function renderLibrary() {
 
   const card = (d) => {
     const working = isWorking(d.status);
-    const badge = d.status === "ready" ? "ready" : d.status === "error" ? "error" : "working";
+    const badge = d.status === "ready" ? "ready" : d.status === "error" || d.status === "canceled" ? "error" : "working";
     const meta = d.status === "ready"
       ? `${d.pages} pág. · ${fmtDuration(d.duration)}`
       : working ? `${Math.floor(progressOf(d) * 100)}% concluído` : esc(d.error || "");
@@ -413,8 +465,9 @@ function renderLibrary() {
           <div class="lib-actions">
             ${d.status === "ready" ? `<a class="btn primary" href="#/ouvir/${d.id}">🎧 Ouvir</a>` : ""}
             ${d.status === "ready" ? `<a class="btn" href="#/arquivos/${d.id}" title="Áudios por página">📁</a>` : ""}
-            ${working && d.pages_ready > 0 ? `<a class="btn primary" href="#/arquivos/${d.id}">🎧 Ouvir prontas</a>` : ""}
-            ${working || d.status === "error" ? `<a class="btn" href="#/convertendo/${d.id}">${working ? "⏳ Progresso" : "↻ Detalhes"}</a>` : ""}
+            ${d.status !== "ready" && d.pages_ready > 0 ? `<a class="btn primary" href="#/arquivos/${d.id}">🎧 Ouvir prontas</a>` : ""}
+            ${working ? `<a class="btn" href="#/convertendo/${d.id}">⏳ Progresso</a>` : ""}
+            ${d.status === "error" || d.status === "canceled" ? `<a class="btn" href="#/convertendo/${d.id}">↻ Continuar</a>` : ""}
             <a class="btn" href="#/ler/${d.id}">📖 Ler</a>
             <button class="btn danger" data-del="${d.id}" title="Excluir">🗑</button>
           </div>
@@ -548,10 +601,13 @@ function renderFiles(id) {
         return;
       }
       const working = ["queued", "extracting", "synthesizing", "finalizing"].includes(doc.status);
-      $("#fl-zip", root).hidden = working;
-      $("#fl-listen", root).hidden = working;
+      const complete = doc.status === "ready";
+      $("#fl-zip", root).hidden = !complete;
+      $("#fl-listen", root).hidden = !complete;
       $("#fl-report", root).innerHTML = working
         ? `<span class="ok">Convertendo:</span> ${files.files.length} de ${files.total || "…"} páginas já podem ser ouvidas. A lista se atualiza sozinha. <a class="link" href="#/convertendo/${id}">Ver progresso</a>`
+        : !complete
+        ? `<span class="warn">Conversão ${doc.status === "canceled" ? "cancelada" : "parada"}:</span> ${files.files.length} de ${files.total || "…"} páginas prontas para ouvir. <a class="link" href="#/convertendo/${id}">Continuar de onde parou</a>`
         : reportHtml(doc.report);
       showPath(files);
       draw();

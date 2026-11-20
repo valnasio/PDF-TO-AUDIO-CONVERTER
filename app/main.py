@@ -131,20 +131,37 @@ def get_document(doc_id: str):
 
 @app.post("/api/documents/{doc_id}/retry")
 def retry(doc_id: str):
+    """Continua uma conversão com erro ou cancelada, de onde ela parou."""
     doc = _require(doc_id)
-    if doc["status"] != "error":
-        raise HTTPException(409, "Só é possível tentar novamente conversões com erro")
-    db.update(doc_id, status="queued", error=None)
+    if doc["status"] not in ("error", "canceled"):
+        raise HTTPException(409, "Só é possível continuar conversões com erro ou canceladas")
+    db.update(doc_id, status="queued", error=None, note="")
     converter.enqueue(doc_id)
     return _public(db.get(doc_id))
 
 
-@app.post("/api/documents/{doc_id}/reconvert")
-async def reconvert(doc_id: str):
-    """Converte de novo com o PDF já salvo (ex.: arquivos da versão antiga, de MP3 único)."""
+@app.post("/api/documents/{doc_id}/cancel")
+async def cancel(doc_id: str):
+    """Para a conversão. As páginas já prontas continuam disponíveis e dá para
+    continuar depois, de onde parou."""
     doc = _require(doc_id)
-    if doc["status"] not in ("ready", "error"):
+    if doc["status"] not in db.ACTIVE_STATUSES:
+        raise HTTPException(409, "Esta conversão não está em andamento")
+    converter.cancel(doc_id)
+    await asyncio.sleep(0.3)  # deixa a tarefa terminar de cancelar
+    db.update(doc_id, status="canceled", note="", error="Conversão cancelada por você.")
+    return _public(db.get(doc_id))
+
+
+@app.post("/api/documents/{doc_id}/reconvert")
+async def reconvert(doc_id: str, voice: str | None = None):
+    """Converte de novo com o PDF já salvo, opcionalmente com outra voz (ex.: trocar
+    a voz Microsoft, limitada em livros enormes, por uma voz do computador)."""
+    doc = _require(doc_id)
+    if doc["status"] not in ("ready", "error", "canceled"):
         raise HTTPException(409, "A conversão deste arquivo ainda está em andamento")
+    if voice is not None and voice not in VOICE_IDS:
+        raise HTTPException(400, "Voz inválida")
     folder = doc_dir(doc_id)
     info = load_pages(doc_id) or load_plan(doc_id)
 
@@ -156,8 +173,8 @@ async def reconvert(doc_id: str):
             shutil.rmtree(item, ignore_errors=True) if item.is_dir() else item.unlink(missing_ok=True)
 
     await asyncio.to_thread(clean)
-    db.update(doc_id, status="queued", error=None, chunks_done=0, chunks_total=0,
-              duration=0, file_size=0, page_marks=[], report=None, pages_ready=0)
+    db.update(doc_id, status="queued", error=None, chunks_done=0, chunks_total=0, note="",
+              duration=0, file_size=0, page_marks=[], report=None, pages_ready=0, voice=voice or doc["voice"])
     converter.enqueue(doc_id)
     return _public(db.get(doc_id))
 
