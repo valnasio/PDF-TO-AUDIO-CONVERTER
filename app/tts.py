@@ -2,7 +2,7 @@
 
 - Vozes no computador (padrão): Piper (Faber, Cadu, Jeff), neurais, rodando no
   próprio computador. Sem limite de pedidos e sem internet depois de baixar a
-  voz — ideal para livros grandes.
+  voz. Indicadas para livros grandes.
 - Vozes Microsoft (Edge TTS): online, maior qualidade. Cada trecho é conferido
   palavra por palavra pelos eventos "WordBoundary" e refeito se faltar algo;
   o serviço pode limitar livros muito grandes.

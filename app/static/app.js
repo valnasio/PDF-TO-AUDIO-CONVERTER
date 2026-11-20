@@ -126,7 +126,7 @@ function renderUpload() {
       err.textContent = "Selecione um arquivo PDF."; err.hidden = false; return;
     }
     file = f;
-    chosen.textContent = `📎 ${f.name} — ${fmtSize(f.size)}`;
+    chosen.textContent = `${f.name}, ${fmtSize(f.size)}`;
     chosen.hidden = false;
     btn.disabled = !voice;
   };
@@ -215,7 +215,7 @@ function renderConverting(id) {
   let timer = null, stopped = false;
 
   const phaseText = (d) => ({
-    queued: d.queue_position ? `Na fila — ${d.queue_position} arquivo(s) antes deste` : "Na fila…",
+    queued: d.queue_position ? `Na fila, com ${d.queue_position} arquivo(s) antes deste` : "Na fila…",
     extracting: "Lendo e organizando o texto do PDF…",
     synthesizing: "Gerando a narração com voz natural…",
     finalizing: "Juntando as partes do áudio…",
@@ -289,7 +289,7 @@ function renderConverting(id) {
         return;
       }
     } catch (e) {
-      $("#conv-phase", root).textContent = `Sem conexão com o servidor (${e.message}) — tentando novamente…`;
+      $("#conv-phase", root).textContent = `Sem conexão com o servidor (${e.message}). Tentando de novo…`;
     }
     timer = setTimeout(tick, 1500);
   };
@@ -524,9 +524,9 @@ function renderFiles(id) {
     ].sort((a, b) => a.page - b.page)
       .filter((r) => !q || String(r.page) === q || (r.f && r.f.file.toLowerCase().includes(q)));
     const items = rows.map((r) => r.missing
-      ? `<div class="tree-row missing"><span>🖼</span><span class="fname">pág. ${r.page} — sem texto (imagem), não narrada</span><span></span><span></span></div>`
+      ? `<div class="tree-row missing"><span>🖼</span><span class="fname">pág. ${r.page}: sem texto (imagem), sem áudio</span><span></span><span></span></div>`
       : r.waiting
-      ? `<div class="tree-row missing"><span>⏳</span><span class="fname">pág. ${r.page} — convertendo…</span><span></span><span></span></div>`
+      ? `<div class="tree-row missing"><span>⏳</span><span class="fname">pág. ${r.page}: convertendo…</span><span></span><span></span></div>`
       : `<div class="tree-row ${r.f.file === current ? "playing" : ""}">
           <span>🎵</span>
           <span class="fname" title="${esc(r.f.file)}">${esc(r.f.file)}</span>

@@ -1,6 +1,6 @@
-// Leitor de PDF em Áudio — versão mini (100% no navegador).
-import { extractSegments } from "./pdf-text.js?v=2.6.0";
-import { NEURAL_ID, NEURAL_VOICES, neuralSupported, prepareNeural, splitForQuickStart, synthNeural, warmNeural } from "./neural.js?v=2.6.0";
+// Leitor de PDF em Áudio: versão para navegador (roda toda no aparelho).
+import { extractSegments } from "./pdf-text.js?v=2.6.1";
+import { NEURAL_ID, NEURAL_VOICES, neuralSupported, prepareNeural, splitForQuickStart, synthNeural, warmNeural } from "./neural.js?v=2.6.1";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");

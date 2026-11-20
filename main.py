@@ -1,4 +1,4 @@
-"""Leitor de PDF em Áudio — aplicativo desktop.
+"""Leitor de PDF em Áudio: aplicativo desktop.
 
 Sobe o servidor internamente e abre a interface:
 - Windows: numa janela própria (WebView2, já presente no Windows 10/11).

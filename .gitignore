@@ -4,3 +4,6 @@ __pycache__/
 data/
 build/
 dist/
+
+# PDFs de teste locais (não vão para o repositório)
+amostras/

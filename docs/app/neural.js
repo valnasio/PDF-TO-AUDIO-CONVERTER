@@ -15,7 +15,7 @@ export const neuralSupported = () =>
 let pool = null;
 
 function makeWorker() {
-  const w = new Worker(new URL("./tts-worker.js?v=2.6.0", import.meta.url), { type: "module" });
+  const w = new Worker(new URL("./tts-worker.js?v=2.6.1", import.meta.url), { type: "module" });
   let n = 0;
   const pending = new Map();
   w.onmessage = (e) => {
@@ -69,9 +69,7 @@ export function warmNeural(voiceId) {
   if (!p.warm[voiceId]) {
     p.warm[voiceId] = p.workers[0].call({ type: "stored", voiceId }).then((stored) => {
       if (!stored) return false;
-      const t0 = performance.now();
-      return p.workers[0].call({ type: "predict", voiceId, text: "Olá." })
-        .then(() => { globalThis.__ttsWarmMs = Math.round(performance.now() - t0); return true; });
+      return p.workers[0].call({ type: "predict", voiceId, text: "Olá." }).then(() => true);
     }).catch(() => false);
   }
   return p.warm[voiceId];
@@ -99,14 +97,8 @@ export function synthNeural(voiceId, text) {
   // o primeiro gerador sempre atende; os extras, só quando já têm esta voz carregada
   const usable = p.workers.filter((w, i) => i === 0 || w.voices?.get(voiceId)?.ready);
   const w = usable[p.next++ % usable.length];
-  const wi = p.workers.indexOf(w);
-  const t0 = performance.now();
   const job = w.call({ type: "predict", voiceId, text });
-  job.then(() => {
-    p.firstDone = true;
-    // diagnóstico leve (usado pelos testes automáticos)
-    (globalThis.__ttsLog ||= []).push({ w: wi, chars: text.length, ms: Math.round(performance.now() - t0) });
-  }, () => {});
+  job.then(() => { p.firstDone = true; }, () => {});
   return job;
 }
 
